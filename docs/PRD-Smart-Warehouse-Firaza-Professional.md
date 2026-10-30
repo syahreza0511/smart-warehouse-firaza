@@ -1,5 +1,14 @@
 # Product Requirement Document - Smart Warehouse Firaza
 
+> **Status dokumen: historis — tidak berlaku sebagai spesifikasi aktif.**
+>
+> - PRD kanonik adalah [PRD-Smart-Warehouse-Firaza-Dicoding.md](PRD-Smart-Warehouse-Firaza-Dicoding.md). Kebutuhan yang masih valid dari dokumen ini (persona, pain point, pola Functional dan Non-Functional Requirement) sudah dikonsolidasikan ke sana.
+> - Bagian "Database Draft" tidak berlaku. Nama field di dalamnya (`stock`, `category`) bertentangan dengan desain database; acuan yang berlaku adalah [DATABASE-DESIGN-Smart-Warehouse-Firaza.md](DATABASE-DESIGN-Smart-Warehouse-Firaza.md).
+> - Bagian "API Draft" pada dokumen ini tidak berlaku. Dokumentasi API terpisah tersedia di `API-DOCUMENTATION-Smart-Warehouse-Firaza.md`, tetapi masih dijadwalkan untuk direvisi pada Gelombang 2b. Jangan menganggapnya sebagai kontrak API final sebelum revisi tersebut selesai.
+> - Isi di bawah ini dipertahankan tanpa perubahan sebagai catatan historis.
+>
+> Ditandai historis pada Gelombang 2a, 29 Oktober 2026.
+
 ## Product Vision
 
 Membangun sistem inventory management berbasis web yang membantu bisnis
