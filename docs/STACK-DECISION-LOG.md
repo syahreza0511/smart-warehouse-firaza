@@ -1,7 +1,7 @@
 # Stack Decision Log — Smart Warehouse Firaza
 
 > **Status dokumen:** sumber utama keputusan teknologi Smart Warehouse Firaza.
-> **Revisi:** Gelombang 2a, 29 Oktober 2026.
+> **Revisi:** Gelombang 2a, 29 Oktober 2026. Pembaruan 30 Oktober 2026: ADR-09 sampai ADR-11.
 >
 > - Jika dokumen lain bertentangan dengan log ini dalam hal teknologi, log ini yang berlaku sampai dokumen tersebut direvisi.
 > - Kebutuhan produk dan aturan bisnis diatur di [PRD-Smart-Warehouse-Firaza-Dicoding.md](PRD-Smart-Warehouse-Firaza-Dicoding.md).
@@ -53,7 +53,7 @@ Format setiap ADR (Architecture Decision Record): keputusan, sumber, alasan, tra
 - **Sumber:** [ADVISOR]; [KEPUTUSAN].
 - **Alasan:** Mengurangi kode keamanan buatan sendiri (hashing password, penerbitan dan verifikasi token). Identitas pengguna tersedia di database untuk Row Level Security.
 - **Trade-off:** Perlu mempelajari pengelolaan sesi Supabase di Next.js.
-- **Dampak:** Konfigurasi `JWT_SECRET` dan kolom password di tabel pengguna pada dokumen lama tidak berlaku. Otorisasi Owner/Staff Warehouse tetap ditegakkan di server dan database (PRD FR-AUTH-03).
+- **Dampak:** Konfigurasi `JWT_SECRET` dan kolom password di tabel pengguna pada dokumen lama tidak berlaku. Otorisasi Owner/Staff Warehouse tetap ditegakkan di server dan database (PRD FR-AUTH-03). Provisioning akun, signup, dan offboarding diatur di ADR-11.
 
 ### ADR-05 — REST API melalui Next.js Route Handlers
 
@@ -84,7 +84,7 @@ Format setiap ADR (Architecture Decision Record): keputusan, sumber, alasan, tra
 - **Sumber:** [KEPUTUSAN].
 - **Alasan:** Database development dan production dapat dibangun ulang secara identik; setiap perubahan skema dapat ditinjau.
 - **Trade-off:** Developer menulis SQL secara langsung.
-- **Dampak:** Perubahan skema langsung lewat dashboard tanpa file migration tidak diperbolehkan. Alat dan langkah menjalankan migration dirinci di dokumentasi environment (Gelombang 2b).
+- **Dampak:** Perubahan skema langsung lewat dashboard tanpa file migration tidak diperbolehkan. Alat migration ditetapkan di ADR-10; langkah teknis menjalankannya dirinci di dokumentasi environment (Gelombang 2b).
 
 ### ADR-08 — Operasi Atomik melalui PostgreSQL Function dan Supabase RPC
 
@@ -92,7 +92,74 @@ Format setiap ADR (Architecture Decision Record): keputusan, sumber, alasan, tra
 - **Sumber:** [KEPUTUSAN].
 - **Alasan:** Setiap request Supabase JS client yang terpisah berjalan dalam transaksi database sendiri. Beberapa request terpisah tidak otomatis menjadi satu transaksi, sehingga dapat meninggalkan data setengah tersimpan atau stok tidak konsisten saat diakses bersamaan.
 - **Trade-off:** Sebagian logika bisnis inti ditulis dalam SQL/PL/pgSQL, yang lebih sulit di-debug dan perlu diuji terhadap database sungguhan.
-- **Dampak:** Kontrak function dirinci di DATABASE-DESIGN.
+- **Dampak:** Kontrak function dirinci di DATABASE-DESIGN. Pola keamanan function yang dipanggil melalui RPC diatur di ADR-09.
+
+### ADR-09 — Pola Keamanan RPC: Wrapper `SECURITY INVOKER` dan Implementasi `SECURITY DEFINER` Privat
+
+- **Tanggal:** 30 Oktober 2026.
+- **Keputusan:** [KEPUTUSAN]
+  - Function yang dipanggil melalui Supabase RPC berbentuk wrapper `SECURITY INVOKER` di schema yang diekspos Data API.
+  - Implementasi bisnis yang membutuhkan hak lebih tinggi berbentuk function `SECURITY DEFINER` di schema privat yang tidak diekspos melalui Data API.
+  - Implementasi privat memvalidasi identitas pengguna (`auth.uid()`), role dari `profiles`, kepemilikan resource bila relevan, dan seluruh invariant bisnis. Wrapper tidak menjadi satu-satunya pengendali keamanan.
+  - Pemanggilan RPC langsung oleh pengguna terautentikasi, tanpa melewati Route Handlers, tidak boleh melewati aturan otorisasi. Route Handlers bukan satu-satunya lapisan pertahanan.
+  - Operasi inventori tetap berjalan dalam satu transaksi database yang atomik (ADR-08).
+- **Sumber:** [KEPUTUSAN], berdasarkan audit keamanan fondasi backend dan dokumentasi resmi Supabase serta PostgreSQL.²
+- **Alasan:** Supabase JavaScript client dengan sesi pengguna (ADR-06) hanya dapat memanggil function di schema yang diekspos, sehingga function yang dipanggil Route Handler juga dapat dipanggil langsung melalui Data API. Dokumentasi resmi Supabase menyatakan function `SECURITY DEFINER` di schema yang diekspos dapat dipanggil melalui Data API dengan hak pembuatnya, dan menyarankan agar function seperti itu tidak ditempatkan di schema yang diekspos.²
+- **Trade-off:** Dua function per operasi (wrapper dan implementasi) menambah jumlah kode dan pengujian; signature keduanya harus dijaga tetap sinkron.
+- **Hubungan dengan ADR lain:** Menyempurnakan ADR-08 dalam hal cara function diamankan, tanpa mengubah kewajiban operasi atomik. Tidak mengubah ADR-05: request dari antarmuka tetap melewati Route Handlers, yang memanggil wrapper dengan sesi pengguna (ADR-06).
+- **Persyaratan desain yang wajib diverifikasi saat implementasi** (rincian grant, nama function, dan schema yang diekspos belum ditetapkan):
+  - Hak `USAGE` pada schema dan `EXECUTE` pada function diberikan seminimal mungkin, dengan memperhitungkan hak `EXECUTE` default untuk `PUBLIC` pada function baru.
+  - Pemilik setiap function dan hak efektifnya didokumentasikan. Apakah function `SECURITY DEFINER` melewati RLS bergantung pada pemiliknya (superuser, atribut `BYPASSRLS`, atau pemilik tabel yang tidak memakai `FORCE ROW LEVEL SECURITY`), bukan terjadi otomatis.
+  - `search_path` setiap function `SECURITY DEFINER` ditetapkan aman, dan objek dirujuk dengan nama schema lengkap.
+  - RLS dan grant tabel tetap berlaku sebagai lapisan terpisah dari function.
+  - Schema privat tidak dianggap aman hanya karena tidak diekspos; akses SQL dan hak atas schema tersebut tetap dibatasi dan diuji.
+  - Pengujian mencakup pemanggilan RPC langsung oleh pengguna tanpa sesi, tanpa profil, dan dengan role yang tidak berwenang.
+- **Dampak:** DATABASE-DESIGN §7.1 dan §12.3 saat ini masih menempatkan function `SECURITY DEFINER` di schema `public`. Bagian tersebut diselaraskan pada tahap dokumentasi berikutnya; sampai saat itu, ADR ini yang berlaku untuk pola keamanan function.
+- **Tindak lanjut:** Rincian grant, schema yang diekspos, dan rekomendasi hardening lain dari audit keamanan diputuskan terpisah sebelum migration pertama.
+
+² Supabase Docs, "Row Level Security", https://supabase.com/docs/guides/database/postgres/row-level-security; Supabase Docs, "Database Functions", https://supabase.com/docs/guides/database/functions; PostgreSQL Docs, "CREATE FUNCTION", subbagian "Writing SECURITY DEFINER Functions Safely", https://www.postgresql.org/docs/current/sql-createfunction.html (diakses 30 Oktober 2026).
+
+### ADR-10 — Supabase CLI dan Docker Lokal untuk Migration
+
+- **Tanggal:** 30 Oktober 2026.
+- **Keputusan:** [KEPUTUSAN]
+  - Workflow migration memakai Supabase CLI.
+  - Lingkungan pengembangan Supabase berjalan di Docker lokal.
+  - Perubahan skema dibuat sebagai SQL migration berversi yang disimpan dan dapat ditelusuri di repository (ADR-07).
+  - Migration diuji di lingkungan lokal sebelum diterapkan ke project Supabase remote.
+  - Mengubah skema langsung lewat dashboard tanpa file migration bukan workflow yang diperbolehkan.
+- **Sumber:** [KEPUTUSAN].
+- **Alasan:** Supabase mencatat migration yang sudah diterapkan di setiap database, sehingga database lokal dan remote dapat dibangun dari file yang sama.³ Database lokal memungkinkan pengujian RLS, function, dan constraint tanpa menyentuh data remote.
+- **Trade-off:** Membutuhkan Docker dan Supabase CLI di mesin developer, serta sumber daya komputer untuk menjalankan stack lokal.
+- **Batasan:**
+  - Keputusan ini tidak berarti alat sudah tersedia. Supabase CLI belum terpasang pada mesin pengembangan saat keputusan dicatat; instalasi dilakukan pada checkpoint implementasi tersendiri.
+  - Perilaku transaksi saat migration diterapkan harus diverifikasi sebelum implementasi. Tidak diasumsikan bahwa setiap file migration selalu berjalan sebagai satu transaksi.
+- **Hubungan dengan ADR lain:** Menetapkan alat untuk ADR-07 tanpa mengubah keputusannya.
+- **Dampak:** Langkah teknis (perintah, konfigurasi, alur dari lokal ke remote) dirinci di dokumentasi environment (Gelombang 2b).
+- **Tindak lanjut:** Verifikasi atomicity migration dan prosedur penerapan ke remote sebelum migration pertama.
+
+³ Supabase Docs, "Database Migrations", https://supabase.com/docs/guides/deployment/database-migrations (diakses 30 Oktober 2026).
+
+### ADR-11 — Provisioning Akun dan Siklus Akses Pengguna
+
+- **Tanggal:** 30 Oktober 2026.
+- **Keputusan:** [KEPUTUSAN]
+  - Akun Owner dan Staff Warehouse dibuat oleh developer melalui administrasi Supabase Auth yang terkontrol.
+  - Public signup di Supabase Auth dinonaktifkan; tidak ada registrasi mandiri pada MVP.
+  - Profil dan role disiapkan melalui proses admin yang terkontrol. Tidak ada trigger otomatis pada `auth.users` untuk membuat profil.
+  - Pengguna tidak dapat menetapkan, mengubah, atau menaikkan role sendiri.
+  - Pengguna tanpa profil valid tidak dapat mengakses fitur bisnis aplikasi, termasuk inventori dan Catatan Owner.
+  - Offboarding dilakukan dengan menonaktifkan akses akun, tanpa menghapus profil maupun histori audit yang terkait.
+- **Sumber:** [KEPUTUSAN].
+- **Alasan:** Jumlah pengguna MVP kecil dan dikelola developer. Tanpa trigger provisioning, role tidak dapat terbentuk dari data yang dikirim pengguna saat pendaftaran. Mempertahankan profil menjaga audit trail yang dirujuk transaksi dan aktivitas lain.
+- **Trade-off:** Setiap akun baru dan perubahan role membutuhkan tindakan manual developer.
+- **Batas keputusan:**
+  - Mekanisme teknis penonaktifan akun dan penanganan sesi aktif belum diputuskan dan dicatat sebagai OD-29 pada pembaruan PRD berikutnya. Penonaktifan akun tidak dianggap otomatis mencabut sesi atau token yang sudah terbit sebelum ada rancangan teknis dan pengujian.
+  - Prosedur administrasi final (urutan langkah dan alat yang dipakai) belum ditetapkan.
+  - Pengaturan Supabase Auth dan akun pengguna tidak diubah oleh pencatatan keputusan ini.
+- **Hubungan dengan ADR lain:** Melengkapi ADR-04 tanpa mengubah keputusan Supabase Auth sebagai satu-satunya sistem autentikasi. Asumsi PRD FR-AUTH-02 bahwa akun dibuat developer menjadi keputusan melalui ADR ini; PRD diselaraskan pada tahap dokumentasi berikutnya.
+- **Dampak:** PRD bagian autentikasi dan DATABASE-DESIGN §4.1 perlu diselaraskan.
+- **Tindak lanjut:** Rancang dan uji mekanisme penonaktifan akun serta penanganan sesi aktif (OD-29).
 
 ## Kepatuhan Checklist Tech Stack
 
@@ -177,10 +244,10 @@ Hal berikut perlu dikonfirmasi ke advisor atau tim Dicoding dan tidak boleh dian
 
 | Dokumen | Status | Jadwal |
 |---|---|---|
-| `PRD-Smart-Warehouse-Firaza-Dicoding.md` | Selaras (PRD kanonik); daftar topik OD-15 dan OD-18 perlu disinkronkan | Sinkronisasi diajukan terpisah |
+| `PRD-Smart-Warehouse-Firaza-Dicoding.md` | Selaras (PRD kanonik). Diperbarui 30 Oktober 2026: 83 FR termasuk Catatan Owner (FR-NOTE), FR-AUTH-04 dan FR-AUTH-05 sesuai ADR-11, serta OD-21 sampai OD-29. OD-15 dan OD-18 tercatat sebagai keputusan terbuka | Sinkronisasi dokumentasi selesai; keputusan terbuka masih menunggu persetujuan |
 | `PRD-Smart-Warehouse-Firaza-Professional.md` | Historis | Ditandai Gelombang 2a |
-| `FEATURE-SPECIFICATION-Smart-Warehouse-Firaza.md` | Masih memuat JWT dan aturan lama | Gelombang 2a |
-| `DATABASE-DESIGN-Smart-Warehouse-Firaza.md` | Masih memuat Prisma dan Express | Gelombang 2a |
+| `FEATURE-SPECIFICATION-Smart-Warehouse-Firaza.md` | Selaras. Diperbarui 30 Oktober 2026 beserta koreksi lanjutan: autentikasi Supabase Auth dan akun sesuai ADR-04 dan ADR-11, aturan inventori sesuai PRD, dan Catatan Owner (§12a). Seluruh fitur masih berstatus rencana; belum ada implementasi | Sinkronisasi dokumentasi selesai; keputusan terbuka masih menunggu persetujuan |
+| `DATABASE-DESIGN-Smart-Warehouse-Firaza.md` | Selaras. Diperbarui 30 Oktober 2026 beserta koreksi lanjutan: Supabase PostgreSQL, SQL migration dengan Supabase CLI (ADR-07, ADR-10), pola keamanan RPC (ADR-09), dan konsep Catatan Owner (§4.10). Schema final, grant, SQL migration, dan sejumlah rekomendasi keamanan (§12.4) belum diputuskan; ERD belum memuat Catatan Owner | Sinkronisasi dokumentasi selesai; desain final menunggu keputusan terbuka |
 | `PROJECT-CONTEXT-Smart-Warehouse-Firaza.md` | Masih memuat stack lama | Gelombang 2a |
 | `API-DOCUMENTATION`, `CODING-GUIDELINE`, `DEVELOPMENT-TASK`, `ENVIRONMENT-CONFIGURATION`, `USER-FLOW`, `PROJECT-MEMORY`, `README-Smart-Warehouse-Firaza.md`, AI guides, GitHub workflow guide | Masih memuat stack lama (React + Vite, Express, Prisma, JWT) sebagian atau seluruhnya | Gelombang 2b |
 | `PRD-TYPESCRIPT-VARIANT-Smart-Warehouse-Firaza.md`, `SMART-WAREHOUSE-FIRAZA-JAVASCRIPT-VS-TYPESCRIPT-COMPARISON.md` | Tidak aktif (ADR-02) | Penandaan di file: Gelombang 2b |

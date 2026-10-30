@@ -3,7 +3,7 @@
 # Smart Warehouse Firaza
 
 > **Status dokumen:** desain database Smart Warehouse Firaza.
-> **Revisi:** Gelombang 2a, 29 Oktober 2026.
+> **Revisi:** Gelombang 2a, 29 Oktober 2026. Pembaruan 30 Oktober 2026: penyelarasan dengan ADR-09 sampai ADR-11, konsep Catatan Owner (§4.10), dan OD-21 sampai OD-29.
 >
 > - Kebutuhan produk mengacu pada [PRD-Smart-Warehouse-Firaza-Dicoding.md](PRD-Smart-Warehouse-Firaza-Dicoding.md) (PRD kanonik) dan [FEATURE-SPECIFICATION-Smart-Warehouse-Firaza.md](FEATURE-SPECIFICATION-Smart-Warehouse-Firaza.md). Keputusan teknologi mengacu pada [STACK-DECISION-LOG.md](STACK-DECISION-LOG.md).
 > - Seluruh isi dokumen ini berstatus **[RENCANA — belum diimplementasikan]**. Belum ada SQL migration, database, maupun kode aplikasi. Belum ada constraint, function, atau policy yang diuji.
@@ -38,6 +38,7 @@ Database dirancang untuk mendukung proses utama aplikasi:
 -   Koreksi transaksi final.
 -   Stock Opname berbasis sesi.
 -   Monitoring kondisi stok.
+-   Catatan Owner: tugas dan reminder dari Owner kepada Staff Warehouse.
 -   Audit history aktivitas pengguna.
 
 ## 1.1 Stack Database
@@ -50,6 +51,9 @@ Database dirancang untuk mendukung proses utama aplikasi:
 | Perubahan skema | SQL migration yang disimpan di repository | [KEPUTUSAN] ADR-07 |
 | Operasi atomik | PostgreSQL function yang dipanggil melalui Supabase RPC | [KEPUTUSAN] ADR-08 |
 | Bahasa aplikasi | JavaScript | [KEPUTUSAN] ADR-02 |
+| Pola keamanan function | Wrapper `SECURITY INVOKER` yang diekspos dan implementasi `SECURITY DEFINER` di schema privat | [KEPUTUSAN] ADR-09 |
+| Alat migration | Supabase CLI dengan Supabase lokal di Docker | [KEPUTUSAN] ADR-10 |
+| Akun dan profil | Provisioning manual oleh developer; public signup dinonaktifkan; offboarding tanpa menghapus profil | [KEPUTUSAN] ADR-11 |
 
 ## 1.2 Konvensi
 
@@ -209,6 +213,7 @@ erDiagram
 -   Diperiksa secara visual dan dicocokkan dengan sumber: 9 entitas dan 20 relasi tergambar, kardinalitas sesuai, tidak ada bagian yang terpotong.
 -   Gambar ini memvisualisasikan desain yang direncanakan, bukan database yang sudah diimplementasikan.
 -   Jika §3.1 berubah, PNG harus dirender ulang; sumber Mermaid tetap menjadi acuan.
+-   Entitas Catatan Owner (§4.10) belum dimasukkan ke §3.1 maupun PNG karena strukturnya belum final. Diagram diperbarui dan PNG dirender ulang setelah OD-22, OD-23, dan OD-25 diputuskan dan perubahan ERD disetujui.
 
 ------------------------------------------------------------------------
 
@@ -239,10 +244,11 @@ Menggantikan tabel `users` pada versi sebelumnya. Kredensial (email dan password
 
 Catatan:
 
--   Kardinalitas: setiap profil merujuk tepat satu akun Supabase Auth (dijamin FK). Sebaliknya, sebuah akun Auth memiliki **nol atau satu** profil: FK tidak menjamin setiap akun memiliki profil, dan mekanisme pembuatan profil belum diputuskan. Akun tanpa profil tidak memiliki role, sehingga ditolak oleh RLS (§12) dan oleh pemeriksaan role di function (§7.1).
+-   Kardinalitas: setiap profil merujuk tepat satu akun Supabase Auth (dijamin FK). Sebaliknya, sebuah akun Auth memiliki **nol atau satu** profil: FK tidak menjamin setiap akun memiliki profil. Akun tanpa profil tidak memiliki role, sehingga ditolak oleh RLS (§12) dan oleh pemeriksaan role di function (§7.1), termasuk dari Catatan Owner. [KEPUTUSAN] (PRD FR-AUTH-05)
 -   ON DELETE RESTRICT menjaga agar akun yang pernah menjadi pelaku tidak terhapus beserta jejak auditnya. Rekomendasi.
--   Cara pembuatan baris profil (seed oleh developer atau trigger saat akun Auth dibuat) mengikuti asumsi bahwa akun dibuat developer [ASUMSI] (PRD FR-AUTH-02) dan belum diputuskan.
--   Pengguna tidak dapat mengubah `role` miliknya sendiri (§12).
+-   Akun dibuat developer melalui administrasi Supabase Auth, dan public signup dinonaktifkan. Baris profil beserta role disiapkan melalui prosedur admin terkontrol; tidak ada trigger otomatis pada `auth.users` untuk membuat profil. [KEPUTUSAN] (PRD FR-AUTH-02; ADR-11) Prosedur administrasi final belum ditetapkan.
+-   Pengguna tidak dapat menetapkan, mengubah, atau menaikkan `role` miliknya sendiri; role hanya diubah melalui proses admin terkontrol (§12). [KEPUTUSAN] (PRD FR-AUTH-05)
+-   Offboarding menonaktifkan akses akun tanpa menghapus profil maupun histori audit. [KEPUTUSAN] (PRD FR-AUTH-04; ADR-11) Mekanisme teknis penonaktifan dan penanganan sesi aktif, termasuk perlu tidaknya penanda status di tabel ini, belum diputuskan. [OPEN DECISION OD-29]
 
 ------------------------------------------------------------------------
 
@@ -498,6 +504,52 @@ Aturan:
 | stock_opname_items | `material_id` | Biasa | Riwayat opname per material; pemeriksaan FK | Rekomendasi |
 | idempotency_requests | (`user_id`, `key`) | Primary key | Keunikan key per pengguna | [KEPUTUSAN] Keputusan E |
 
+Indeks untuk Catatan Owner ditentukan setelah strukturnya final (§4.10).
+
+------------------------------------------------------------------------
+
+## 4.10 Catatan Owner (konsep)
+
+Entitas untuk Catatan Owner (PRD FR-NOTE). Nama kerja tabel: `dashboard_notes`. **Nama tabel, nama kolom, tipe, dan constraint di bawah adalah usulan, belum final.** Struktur akhir menunggu OD-22, OD-23, dan OD-25. Entitas ini belum tercantum di diagram §3.1, ringkasan indeks §4.9, maupun ERD PNG.
+
+Rekomendasi: satu tabel, bila OD-22 memilih satu feedback per catatan. Tabel feedback terpisah hanya dibutuhkan bila feedback harus berversi.
+
+| Kelompok | Atribut usulan | Kebutuhan | Status kebutuhan |
+|---|---|---|---|
+| Identitas | `id` | Identitas catatan | Kebutuhan disetujui; bentuk mengikuti konvensi §1.2 |
+| Isi | `content` (tidak kosong) | Isi catatan Owner | [KEPUTUSAN] (FR-NOTE-01) |
+| Pembuatan | `created_by` (FK `profiles`, wajib), `created_at`, `updated_at` | Pembuat dan waktu | [KEPUTUSAN] (FR-NOTE-16) |
+| Penyelesaian | `completed_by` (FK `profiles`, opsional), `completed_at` | Satu penyelesai beserta waktunya | [KEPUTUSAN] (FR-NOTE-06) |
+| Feedback | `feedback`, `feedback_by` (FK `profiles`), `feedback_updated_at` | Isi, penulis, dan waktu feedback | Kebutuhan [KEPUTUSAN] (FR-NOTE-07); struktur [OPEN DECISION OD-22] |
+| Peninjauan | `reviewed_by` (FK `profiles`, opsional), `reviewed_at` | Peninjau dan waktu, terpisah dari penyelesaian | [KEPUTUSAN] (FR-NOTE-10) |
+| Penghapusan | `deleted_by`, `deleted_at` | Hanya bila soft delete dipilih | [OPEN DECISION OD-25] |
+
+Kondisi catatan diturunkan dari data, bukan disimpan sebagai kolom status. Rekomendasi.
+
+| Kondisi (PRD FR-NOTE) | Data |
+|---|---|
+| Belum selesai | `completed_at` kosong |
+| Selesai, menunggu tinjauan | `completed_at` terisi, `reviewed_at` kosong |
+| Selesai, sudah ditinjau | `completed_at` dan `reviewed_at` terisi |
+
+Aturan konsistensi baris, bila struktur di atas dipakai (rekomendasi, ditegakkan CHECK):
+
+-   `completed_by` dan `completed_at` sama-sama kosong atau sama-sama terisi.
+-   `reviewed_by` dan `reviewed_at` sama-sama kosong atau sama-sama terisi.
+-   `reviewed_at` hanya boleh terisi bila `completed_at` terisi. [DITURUNKAN] (FR-NOTE-10)
+
+Aturan lain:
+
+-   Hanya Owner yang membuat, mengubah, menghapus, dan meninjau catatan; ubah dan hapus hanya oleh pembuat catatan. Hanya Staff Warehouse yang menyelesaikan catatan dan menulis feedback. Pemeriksaan role dan kepemilikan dilakukan di function privat (ADR-09). [KEPUTUSAN] (FR-NOTE-03, FR-NOTE-04, FR-NOTE-06, FR-NOTE-10, FR-NOTE-11) Ubah dan hapus setelah selesai atau ditinjau mengikuti OD-24.
+-   Pembaruan feedback ditolak setelah `reviewed_at` terisi. Penolakan ditegakkan di function privat, bukan hanya di UI. [KEPUTUSAN] (FR-NOTE-08) Function penyimpan feedback dan function peninjauan mengunci baris catatan yang sama, sehingga pembaruan feedback yang bersamaan dengan peninjauan diproses berurutan. Rekomendasi.
+-   Identitas pelaku diisi dari `auth.uid()` dan waktu dari jam database di dalam function, bukan dari parameter klien. [KEPUTUSAN] (FR-NOTE-16)
+-   Pembuatan catatan memakai mekanisme idempotency bersama di §9: pembuatan catatan dan pencatatan hasil idempotency adalah satu unit atomik, replay tidak menambah catatan baru, dan catatan berisi identik tetap diperbolehkan bila berasal dari tindakan berbeda dengan key berbeda. [KEPUTUSAN] (FR-NOTE-21) Tidak ada kolom idempotency tambahan pada tabel catatan.
+-   Daftar aktif dihitung saat dibaca: catatan dengan `completed_at` kosong, ditambah catatan yang tanggal `completed_at` di zona `Asia/Jakarta` sama dengan tanggal hari ini di zona yang sama. Aturannya [KEPUTUSAN] (FR-NOTE-13); cara penghitungan ini rekomendasi. Tidak ada job tengah malam, kolom tambahan, maupun penghapusan otomatis. [KEPUTUSAN] (FR-NOTE-14)
+-   Batas 3 catatan hanya diterapkan saat menampilkan panel. Tidak ada constraint jumlah baris, jumlah catatan per hari, maupun jumlah akun. [KEPUTUSAN] (FR-NOTE-12)
+-   Jumlah pada ringkasan sidebar dihitung dari seluruh baris yang memenuhi kriteria, bukan dari 3 catatan yang tampil di panel. [KEPUTUSAN] (FR-NOTE-20)
+-   Semua FK pelaku ke `profiles` memakai ON DELETE RESTRICT, konsisten dengan §5. Rekomendasi.
+-   Hak menulis Catatan Owner tidak memberi Owner hak apa pun pada tabel maupun function inventori (§7.1, §12.2). [KEPUTUSAN] (FR-NOTE-11)
+
 ------------------------------------------------------------------------
 
 # 5. Database Relationship
@@ -510,6 +562,10 @@ Setiap baris yang mencatat aktivitas menyimpan pelakunya melalui FK ke `profiles
 
 -   FK pelaku wajib (NOT NULL): `material_status_events.created_by`, `inventory_transactions.created_by`, `stock_opname.created_by`, `stock_opname_items.added_by`, `idempotency_requests.user_id`.
 -   FK pelaku opsional (nullable, terisi hanya setelah peristiwanya terjadi): `materials.archived_by`, `stock_opname.posted_by`, `stock_opname.cancelled_by`, `stock_opname_items.counted_by`.
+
+## Profiles - Catatan Owner (konsep)
+
+One Profile → Many catatan sebagai pembuat; Zero-or-Many catatan sebagai penyelesai, penulis feedback, atau peninjau. Relasi ini mengikuti struktur usulan §4.10 dan belum tergambar di ERD.
 
 ------------------------------------------------------------------------
 
@@ -584,7 +640,7 @@ Status ditentukan dari `current_stock` dan `minimum_stock` [KEPUTUSAN] (PRD FR-S
 | `LOW_STOCK` | `current_stock > 0` dan `current_stock <= minimum_stock` |
 | `NORMAL` | `current_stock > minimum_stock` |
 
--   Status dihitung dari data saat dibaca dan tidak disimpan sebagai kolom, agar tidak pernah basi. [DITURUNKAN] (PRD FR-STS-02) Penyediaannya melalui view baca. Rekomendasi.
+-   Status dihitung dari data saat dibaca dan tidak disimpan sebagai kolom, agar tidak pernah basi. [DITURUNKAN] (PRD FR-STS-02) Penyediaannya melalui view baca. Rekomendasi. Keamanan view: lihat §12.4.
 -   Status lama "Aman / Perlu Perhatian / Prioritas Restock" digantikan oleh tiga status di atas.
 -   Status operasional terpisah dari klasifikasi AI (§8). [KEPUTUSAN]
 
@@ -641,13 +697,13 @@ Kewajiban operasi atomik melalui function adalah [KEPUTUSAN] (ADR-08). Nama func
 
 Setiap function mutasi:
 
-1.  Memeriksa `auth.uid()` memiliki profil dengan role yang berwenang; Owner ditolak untuk seluruh operasi tulis. [KEPUTUSAN]
+1.  Memeriksa `auth.uid()` memiliki profil dengan role yang berwenang. Owner ditolak untuk seluruh operasi tulis inventori; operasi tulis Owner terbatas pada Catatan Owner (§4.10, §7.2). [KEPUTUSAN] (PRD FR-NOTE-11)
 2.  Memvalidasi input (bilangan bulat, nilai minimal, alasan tidak kosong).
 3.  Mengunci baris yang akan diubah dengan urutan penguncian yang konsisten (§13).
 4.  Menjalankan seluruh perubahan dalam satu transaksi; error apa pun membatalkan seluruh perubahan.
 5.  Mengembalikan kode error bisnis yang dapat dipetakan Route Handler ke respons HTTP.
 
-Rekomendasi keamanan: function berjalan sebagai `SECURITY DEFINER` dengan `search_path` kosong, hak eksekusi dicabut dari `anon` dan `public`, dan diberikan hanya kepada `authenticated` (§12).
+Pola keamanan function mengikuti ADR-09 [KEPUTUSAN]: wrapper `SECURITY INVOKER` di schema yang diekspos memanggil implementasi `SECURITY DEFINER` di schema privat, dan implementasi privat menjalankan pemeriksaan butir 1–5. Nama function di §7.2 merujuk operasi; setiap operasi diwujudkan sebagai pasangan wrapper dan implementasi privat. Persyaratan keamanan: §12.3. Rincian grant dan schema: rekomendasi di §12.4.
 
 ## 7.2 Daftar Function
 
@@ -666,8 +722,16 @@ Rekomendasi keamanan: function berjalan sebagai `SECURITY DEFINER` dengan `searc
 | `cancel_stock_opname` | sesi, alasan | Lihat §11 | Lepas pembekuan + `CANCELLED` | Lihat §11 |
 | `remove_stock_opname_item` | item | Hanya ada jika OD-01 disetujui | Hapus item + lepas pembekuan material itu | — |
 | Pencatatan `OPENING_BALANCE` | — | [OPEN DECISION OD-17] | — | — |
+| `create_note` | isi catatan, idempotency key (wajib) | Role Owner dengan profil valid; isi tidak kosong; key wajib; idempotency (§9): request identik di-replay, key yang dipakai untuk request berbeda ditolak (PRD FR-NOTE-21) | Insert catatan dan simpan respons idempotency dalam satu transaksi; pembuat dari `auth.uid()` dan waktu dari jam database, bukan dari input | — |
+| `update_note` | id catatan, isi | Role Owner; pembuat catatan; setelah selesai atau ditinjau → [OPEN DECISION OD-24] | Update isi | — |
+| `delete_note` | id catatan | Role Owner; pembuat catatan; setelah selesai atau ditinjau → [OPEN DECISION OD-24]; metode → [OPEN DECISION OD-25] | Hapus atau tandai terhapus | — |
+| `complete_note` | id catatan | Role Staff; catatan belum selesai | Isi penyelesai dan waktu selesai | — |
+| `save_note_feedback` | id catatan, feedback | Role Staff; catatan belum ditinjau; syarat lain → [OPEN DECISION OD-21], [OPEN DECISION OD-22] | Simpan feedback, penulis, dan waktu | — |
+| `review_note` | id catatan | Role Owner; catatan sudah selesai; belum ditinjau; tanpa feedback → [OPEN DECISION OD-23] | Isi peninjau dan waktu tinjau; feedback terkunci | — |
 
 CRUD kategori dan penghapusan material dapat dilakukan langsung ke tabel dengan policy khusus `STAFF_WAREHOUSE` (§12), karena keunikan nama dan larangan hapus ditegakkan constraint (unique index dan FK RESTRICT). Rekomendasi. Jika normalisasi nama disetujui dengan Opsi 3 (§4.2), penulisan kategori dipindahkan ke function (`create_category`, `update_category`) dan grant tulis langsung dicabut.
+
+Catatan Owner tidak ditulis langsung ke tabel; seluruh penulisannya melalui function di atas, karena Owner dan Staff Warehouse memakai role database yang sama (`authenticated`) sehingga pembatasan kolom per role aplikasi tidak dapat ditegakkan dengan grant tabel. Rekomendasi. Kode error operasi Catatan Owner dirinci bersama dokumentasi API (Gelombang 2b).
 
 ------------------------------------------------------------------------
 
@@ -693,7 +757,9 @@ Fitur AI pada brief (preprocessing, klasifikasi, inference API, ringkasan Genera
 
 # 9. Idempotency
 
-[KEPUTUSAN] (PRD FR-TRX-05, FR-COR-05; Keputusan E). Mekanisme rinci di bawah adalah rekomendasi.
+[KEPUTUSAN] (PRD FR-TRX-05, FR-COR-05, FR-NOTE-21; Keputusan E). Mekanisme rinci di bawah adalah rekomendasi.
+
+Tabel `idempotency_requests` dipakai bersama oleh operasi inventori dan pembuatan Catatan Owner. Keunikan `(user_id, key)` berlaku lintas seluruh operasi tersebut, dan nama operasi ikut dibandingkan (§9.2). [KEPUTUSAN] (FR-TRX-05, FR-NOTE-21)
 
 ## 9.1 Cakupan
 
@@ -704,7 +770,7 @@ Dua konsep dibedakan:
 
 | Kelompok | Operasi | Mekanisme | Dasar |
 |---|---|---|---|
-| Wajib memakai `idempotency_requests` | `post_stock_movement`, `correct_transaction` | Replay hasil sebelumnya; key sama + payload berbeda ditolak | [KEPUTUSAN] PRD FR-TRX-05, FR-COR-05 |
+| Wajib memakai `idempotency_requests` | `post_stock_movement`, `correct_transaction`, `create_note` | Replay hasil sebelumnya; key sama + payload atau operasi berbeda ditolak; request tanpa key ditolak | [KEPUTUSAN] PRD FR-TRX-05, FR-COR-05, FR-NOTE-21 |
 | Pencegahan duplikat lewat status | `post_stock_opname`, `cancel_stock_opname` | Request kedua menemukan sesi bukan `ACTIVE` → ditolak `OPNAME_NOT_ACTIVE` | [KEPUTUSAN] (OD-12: pemeriksaan status dalam transaksi database) |
 | Pencegahan duplikat lewat status | `archive_material`, `reactivate_material` | Request kedua ditolak `ALREADY_ARCHIVED` / `NOT_ARCHIVED` | [DITURUNKAN] |
 | Pencegahan duplikat lewat constraint | `add_stock_opname_item` | UNIQUE (`stock_opname_id`, `material_id`) dan `active_opname_id` → request kedua ditolak | [DITURUNKAN] |
@@ -722,10 +788,12 @@ Bentuk respons HTTP untuk request ulang yang ditolak oleh status atau constraint
 
 ## 9.3 Alur di Dalam Function
 
-Seluruh langkah berada dalam satu transaksi database bersama mutasi stok:
+Pemeriksaan identitas dan role pemanggil (§7.1 butir 1) dijalankan sebelum langkah di bawah, sehingga juga berlaku untuk replay: hasil tersimpan tidak dikembalikan kepada pemanggil yang tidak lagi berwenang. [DITURUNKAN dari ADR-09] Penanganan akun yang dinonaktifkan mengikuti OD-29, dan replay untuk catatan yang sudah dihapus mengikuti OD-25.
+
+Seluruh langkah berada dalam satu transaksi database bersama mutasinya (perubahan stok atau pembuatan catatan):
 
 1.  Mencoba menyisipkan baris `(user_id, key, operation, request_hash)` dengan pengabaian konflik.
-2.  Jika baris baru berhasil disisipkan: jalankan operasi, simpan `response`, lalu commit. Mutasi stok dan catatan idempotency tersimpan bersama atau gagal bersama.
+2.  Jika baris baru berhasil disisipkan: jalankan operasi, simpan `response`, lalu commit. Mutasi dan catatan idempotency tersimpan bersama atau gagal bersama.
 3.  Jika key sudah ada:
     -   `request_hash` sama → kembalikan `response` yang tersimpan tanpa mengulang mutasi.
     -   `request_hash` berbeda → tolak dengan `IDEMPOTENCY_KEY_REUSED`. [KEPUTUSAN]
@@ -758,7 +826,7 @@ Tidak ada kedaluwarsa atau penghapusan otomatis sebelum kebijakan retensi disetu
 | Transaksi pengganti boleh dikoreksi lagi (ia transaksi biasa) | [KEPUTUSAN] Keputusan D |
 | `ADJUSTMENT` tidak dikoreksi dengan `REVERSAL`; koreksi melalui sesi Stock Opname baru | [KEPUTUSAN] PRD FR-COR-03 |
 | Ditolak jika material beku atau stok hasil negatif | [DITURUNKAN] PRD FR-COR-04 |
-| Ditolak jika material diarsipkan, karena material arsip tidak dapat dipakai dalam transaksi baru | [DITURUNKAN] PRD FR-MAT-07 |
+| Ditolak jika koreksi menulis transaksi pengubah stok (`REVERSAL` maupun transaksi pengganti) pada material yang diarsipkan; berlaku untuk setiap material yang stoknya dimutasi. Material harus direaktivasi lebih dulu (PRD FR-MAT-08). Histori material arsip tetap dapat dibaca, dan penolakan tidak meninggalkan transaksi maupun perubahan stok parsial | [KEPUTUSAN] PRD FR-COR-04 |
 | Transaksi pengganti dengan material dan tipe yang sama dengan transaksi asal | [DITURUNKAN] PRD FR-COR-02 |
 | Koreksi tanpa transaksi pengganti | [OPEN DECISION OD-09] |
 | Pengganti dengan material atau tipe berbeda | [OPEN DECISION OD-10] |
@@ -872,16 +940,17 @@ Kewajiban otorisasi di server **dan** database adalah [KEPUTUSAN] (PRD FR-AUTH-0
 
 ## 12.1 Prinsip
 
--   Supabase API dapat diakses langsung dengan anon/publishable key yang ikut ke browser. Karena itu RLS aktif di **semua** tabel aplikasi, meskipun aplikasi selalu melewati Route Handlers.
+-   Supabase API dapat diakses langsung dengan anon/publishable key yang ikut ke browser. Karena itu RLS aktif di **semua** tabel aplikasi. Operasi tulis dari aplikasi melewati Route Handlers (ADR-05), sedangkan pola baca server-side mengikuti OD-18. Function di schema yang diekspos tetap dapat dipanggil langsung tanpa Route Handler, sehingga penegakan wajib berada di database (ADR-09).
 -   Route Handlers memakai Supabase client dengan sesi pengguna, sehingga `auth.uid()` dan RLS berlaku pada setiap query (ADR-06; OD-18 tidak mengubah prinsip ini).
 -   Service role key melewati RLS dan hanya dipakai di server untuk seed atau administrasi, tidak pernah untuk request pengguna.
--   Role pengguna dibaca dari `profiles` melalui helper function baca (`STABLE`, `SECURITY DEFINER`) agar policy tidak merujuk dirinya sendiri secara berulang.
+-   Policy RLS dan function membutuhkan role pengguna dari `profiles`. [DITURUNKAN dari PRD FR-AUTH-03] Rekomendasi: role dibaca melalui helper function baca (`STABLE`, `SECURITY DEFINER`) agar policy tidak merujuk dirinya sendiri secara berulang; helper tanpa parameter dan hanya mengembalikan role pemanggil berdasarkan `auth.uid()`. Apabila helper diimplementasikan sebagai `SECURITY DEFINER`, penempatannya di schema yang tidak diekspos direkomendasikan sebagai mitigasi keamanan. Rekomendasi ini konsisten dengan prinsip ADR-09, tetapi bukan konsekuensi wajib ADR-09 untuk setiap helper. Mekanisme helper, pemilik function, `USAGE`, `EXECUTE`, serta RLS dan grant final masih memerlukan desain dan pengujian.
+-   Akun dan profil disiapkan developer (ADR-11). Pengguna tanpa profil valid tidak lolos pemeriksaan role sehingga ditolak dari seluruh fitur bisnis, termasuk Catatan Owner. [KEPUTUSAN] (PRD FR-AUTH-05)
 
 ## 12.2 Matriks Akses Tabel
 
 | Tabel | SELECT | INSERT / UPDATE / DELETE langsung |
 |---|---|---|
-| profiles | Pengguna ber-profil (untuk menampilkan nama pelaku) | Tidak ada; `role` tidak dapat diubah pemiliknya |
+| profiles | Kebutuhan: aplikasi dapat memperoleh profil dan role pengguna yang sedang login untuk memeriksa otorisasi [DITURUNKAN dari PRD FR-AUTH-05]. Mekanisme penyediaannya, yaitu RLS SELECT atas profil sendiri, function terkontrol, atau jalur server yang aman, belum ditetapkan dan menjadi keputusan implementasi. Profil pengguna lain, termasuk nama pelaku di histori dan Catatan Owner: [OPEN DECISION OD-28] | Tidak ada; `role` hanya diubah melalui proses admin terkontrol (ADR-11) |
 | categories | Pengguna ber-profil | `STAFF_WAREHOUSE` (hapus dibatasi FK RESTRICT); berubah menjadi "hanya function" jika normalisasi nama Opsi 3 disetujui (§4.2) |
 | materials | Pengguna ber-profil | DELETE untuk `STAFF_WAREHOUSE` (dibatasi FK RESTRICT); create/update/arsip/reaktivasi hanya melalui function |
 | material_status_events | Pengguna ber-profil | Tidak ada (hanya function) |
@@ -889,12 +958,38 @@ Kewajiban otorisasi di server **dan** database adalah [KEPUTUSAN] (PRD FR-AUTH-0
 | stock_opname | Pengguna ber-profil | Tidak ada (hanya function) |
 | stock_opname_items | Pengguna ber-profil | Tidak ada (hanya function) |
 | idempotency_requests | Tidak ada | Tidak ada (hanya function) |
+| Catatan Owner (§4.10) | Pengguna ber-profil; akses Staff Warehouse ke catatan di luar daftar aktif mengikuti [OPEN DECISION OD-27]; catatan terhapus mengikuti [OPEN DECISION OD-25] | Tidak ada (hanya function, §7.2) |
 
 ## 12.3 Function
 
--   Hak eksekusi function dicabut dari `anon` dan `public`, lalu diberikan kepada `authenticated`.
--   Function berjalan sebagai `SECURITY DEFINER` dengan `search_path` kosong dan selalu memeriksa role pemanggil di dalamnya, karena function di schema `public` dapat dipanggil langsung melalui RPC tanpa melewati Route Handler.
--   Pemeriksaan role di Route Handler tetap dilakukan untuk pesan error yang jelas; pemeriksaan di function adalah penegakan yang tidak dapat dilewati.
+Pola keamanan function mengikuti ADR-09 [KEPUTUSAN]:
+
+-   Function yang dipanggil melalui RPC berbentuk wrapper `SECURITY INVOKER` di schema yang diekspos Data API; implementasi bisnis berbentuk function `SECURITY DEFINER` di schema privat yang tidak diekspos.
+-   Implementasi privat memeriksa `auth.uid()` tidak kosong, role dari `profiles`, kepemilikan resource bila relevan, dan seluruh invariant bisnis. Wrapper bukan satu-satunya pengendali keamanan.
+-   Pemanggilan RPC langsung tanpa Route Handler tunduk pada pemeriksaan yang sama. Pemeriksaan role di Route Handler tetap dilakukan untuk pesan error yang jelas; pemeriksaan di function privat adalah penegakan yang tidak dapat dilewati.
+
+Persyaratan yang wajib diverifikasi saat implementasi (ADR-09); rinciannya belum ditetapkan:
+
+-   Hak `USAGE` pada schema dan `EXECUTE` pada function diberikan seminimal mungkin, dengan memperhitungkan hak `EXECUTE` default untuk `PUBLIC` pada function baru.
+-   Pemilik setiap function dan hak efektifnya didokumentasikan. Function `SECURITY DEFINER` melewati RLS bila pemiliknya superuser, memiliki atribut `BYPASSRLS`, atau merupakan pemilik tabel yang tidak memakai `FORCE ROW LEVEL SECURITY`. Menurut dokumentasi Supabase, function yang dibuat melalui migration dimiliki `postgres` sehingga dalam praktik melewati RLS (STACK-DECISION-LOG ADR-09); karena itu pemeriksaan di dalam function wajib.
+-   `search_path` setiap function `SECURITY DEFINER` ditetapkan aman (rekomendasi: kosong), dan objek dirujuk dengan nama schema lengkap.
+-   Schema privat tidak dianggap aman hanya karena tidak diekspos; hak atas schema tersebut tetap dibatasi dan diuji.
+-   Pemanggilan RPC langsung diuji (§14.4).
+
+## 12.4 Rekomendasi Keamanan yang Belum Disetujui
+
+Rekomendasi berikut berasal dari audit keamanan fondasi backend (30 Oktober 2026) dan **belum disetujui**. Dicatat agar diputuskan sebelum migration pertama.
+
+| Rekomendasi | Alasan | Bagian terdampak |
+|---|---|---|
+| Mencabut default privileges tabel, sequence, dan function baru di `public` dari `anon` dan `authenticated`, serta hak `EXECUTE` default untuk `PUBLIC`, sebelum tabel pertama dibuat | Objek baru di `public` otomatis mendapat grant sehingga dapat dijangkau Data API | §14.2 (langkah awal) |
+| Mengaktifkan RLS dan mengatur grant di file migration yang sama dengan pembuatan tabel atau function | Mencegah tabel terbuka bila migration diterapkan bertahap | §14.2 langkah 7 |
+| View status stok memakai `security_invoker = true` | View secara default berjalan dengan hak pemiliknya dan dapat melewati RLS tabel dasarnya | §6.1, §14.2 langkah 8 |
+| Memilih schema yang diekspos: `public` atau schema `api` khusus | Schema `api` mempersempit permukaan API, tetapi menambah pekerjaan | Penempatan wrapper dan view |
+| Menempatkan `idempotency_requests` di schema privat | Tabel ini tidak pernah dibaca langsung oleh pengguna | §4.8, §12.2 |
+| `anon` tidak memiliki hak apa pun pada tabel dan function aplikasi | Login ditangani Supabase Auth, bukan Data API | §12.2 |
+| Membatasi kolom yang dapat ditulis langsung pada `categories`, bila tulis langsung dipertahankan | Mencegah perubahan `id` atau kolom waktu | §12.2; terkait OD-19 |
+| Memberikan `USAGE` pada schema privat dan `EXECUTE` pada helper role kepada `authenticated` | Policy RLS memanggil helper dengan hak pengguna. Penempatan helper `SECURITY DEFINER` di schema yang tidak diekspos juga merupakan rekomendasi bersyarat (§12.1), bukan konsekuensi wajib ADR-09 | §12.1 |
 
 ------------------------------------------------------------------------
 
@@ -938,7 +1033,8 @@ Pemetaan kode error ke status HTTP dirinci di dokumentasi API (Gelombang 2b).
 ## 14.1 Aturan Migrasi
 
 -   Seluruh perubahan skema melalui file SQL migration yang disimpan di repository. Perubahan langsung lewat dashboard tanpa file migration tidak diperbolehkan. [KEPUTUSAN] (ADR-07)
--   Alat dan langkah menjalankan migration dirinci di dokumentasi environment (Gelombang 2b).
+-   Alat migration adalah Supabase CLI dengan Supabase lokal di Docker; migration diuji di lingkungan lokal sebelum diterapkan ke project remote. [KEPUTUSAN] (ADR-10) Langkah teknis menjalankannya dirinci di dokumentasi environment (Gelombang 2b).
+-   Perilaku transaksi saat migration diterapkan harus diverifikasi sebelum migration pertama. Tidak diasumsikan bahwa setiap file migration berjalan sebagai satu transaksi. (ADR-10; test di §14.4)
 
 ## 14.2 Urutan Migrasi (rekomendasi)
 
@@ -950,9 +1046,11 @@ Pemetaan kode error ke status HTTP dirinci di dokumentasi API (Gelombang 2b).
 6.  Database functions (§7).
 7.  RLS policies dan grants (§12).
 8.  View status stok operasional (§6.1).
-9.  Seed data sintetis dan akun (PRD NFR-04; [ASUMSI] FR-AUTH-02).
+9.  Seed data sintetis (PRD NFR-04) dan profil akun melalui prosedur admin terkontrol (PRD FR-AUTH-02; ADR-11). Akun Auth dibuat developer; seed stok awal bergantung pada OD-17.
 
 Urutan ini menghindari FK yang merujuk tabel yang belum ada; pada tahap implementasi migration dapat digabung atau dipecah selama dependensinya terjaga.
+
+Catatan Owner (§4.10) hanya bergantung pada `profiles`, sehingga dapat dibuat setelah langkah 1 setelah OD-22, OD-23, dan OD-25 diputuskan. Usulan perubahan urutan terkait default privileges dan RLS tercatat di §12.4 dan belum disetujui.
 
 ## 14.3 Rekonsiliasi
 
@@ -969,6 +1067,8 @@ Pemeriksaan baca yang dapat dijalankan kapan saja dan dalam test. Hasil yang dih
 ## 14.4 Rencana Pengujian
 
 Belum ada test yang dibuat. Bentuk dan alat test ditentukan di dokumentasi Development Task (Gelombang 2b).
+
+Kode error yang muncul di kolom hasil, misalnya `MATERIAL_FROZEN`, `IDEMPOTENCY_KEY_REUSED`, dan `OPNAME_INVARIANT_VIOLATION`, adalah kode usulan yang bersifat indikatif, sama seperti di §7. Nama kode final, pesan error, dan pemetaan status HTTP belum ditetapkan dan diputuskan melalui dokumentasi API (Gelombang 2b). Yang wajib diuji adalah hasil bisnisnya, misalnya operasi ditolak, transaksi dibatalkan seluruhnya, atau data tidak berubah. Belum finalnya nama kode tidak membuat aturan bisnis yang diuji menjadi opsional.
 
 | Area | Skenario | Hasil yang diharapkan |
 |---|---|---|
@@ -1004,9 +1104,46 @@ Belum ada test yang dibuat. Bentuk dan alat test ditentukan di dokumentasi Devel
 | Hapus | Material dengan transaksi, item opname, atau event status | Ditolak |
 | Hapus | Kategori yang dipakai material arsip | Ditolak |
 | Keunikan | "Kardus Medium" dan "kardus medium"; nama sama dengan material arsip | Ditolak |
-| Otorisasi | Owner memanggil function tulis | Ditolak |
-| Otorisasi | Akses tulis langsung ke tabel melalui REST Supabase | Ditolak RLS |
+| Otorisasi | Owner memanggil function tulis inventori | Ditolak |
+| Otorisasi | Tulis langsung melalui REST Supabase ke tabel yang tidak memberi grant tulis langsung (§12.2) | Ditolak |
+| Otorisasi | Tulis langsung oleh Owner atau pengguna tanpa profil ke tabel yang memberi grant tulis kepada Staff Warehouse (§12.2) | Ditolak RLS |
 | Otorisasi | Pengguna mengubah `role` sendiri | Ditolak |
+| Otorisasi | Pengguna tanpa sesi (`anon`) membaca tabel atau memanggil RPC | Ditolak atau tidak ada baris |
+| Otorisasi | Pengguna Auth tanpa profil membaca data atau memanggil RPC, termasuk Catatan Owner | Ditolak atau tidak ada baris |
+| Otorisasi | Pemanggilan RPC langsung, tanpa Route Handler, oleh role yang tidak berwenang | Ditolak oleh function privat |
+| Otorisasi | Function di schema privat dipanggil melalui Data API | Tidak dapat dijangkau |
+| Akun | Akun yang dinonaktifkan mengakses fitur bisnis | Ditolak; profil dan histori tetap ada. Mekanisme mengikuti OD-29 |
+| Migration | Migration dengan error yang disengaja di tengah file diterapkan ke database lokal | Tidak ada objek parsial yang tertinggal; bila tidak terpenuhi, prosedur migration disesuaikan sebelum migration pertama |
+| Catatan Owner | Staff Warehouse membuat, mengubah isi, atau menghapus catatan, atau menandai "Sudah Ditinjau" | Ditolak |
+| Catatan Owner | Owner menandai catatan selesai atau menulis feedback | Ditolak |
+| Catatan Owner | Owner menandai "Sudah Ditinjau" pada catatan belum selesai | Ditolak |
+| Catatan Owner | Menyelesaikan catatan yang sudah selesai | Ditolak |
+| Catatan Owner | Memperbarui feedback setelah ditinjau, termasuk melalui RPC langsung | Ditolak |
+| Catatan Owner | Pembaruan feedback bersamaan dengan peninjauan | Diproses berurutan: feedback tersimpan sebelum tinjauan, atau ditolak setelahnya |
+| Catatan Owner | Identitas atau waktu dikirim sebagai parameter dari klien | Tidak dipakai; nilai berasal dari `auth.uid()` dan jam database |
+| Catatan Owner | Catatan selesai pukul 23.59 WIB dibaca pukul 23.59 dan 00.00 WIB | Termasuk daftar aktif pada 23.59; tidak termasuk pada 00.00; baris tetap ada |
+| Catatan Owner | Owner yang memakai hak Catatan Owner menulis ke tabel atau function inventori | Ditolak |
+| Koreksi | Koreksi transaksi milik material arsip | Ditolak; tidak ada `REVERSAL`, transaksi pengganti, maupun perubahan stok |
+| Koreksi | Material direaktivasi dengan alasan (event `REACTIVATED` tercatat), lalu dikoreksi | Berhasil bila seluruh validasi lain terpenuhi |
+| Koreksi | Material sudah direaktivasi tetapi sedang dibekukan sesi Stock Opname aktif | Ditolak |
+| Koreksi | Material sudah direaktivasi tetapi hasil koreksi membuat stok negatif | Ditolak |
+| Koreksi | Owner mencoba reaktivasi material atau koreksi transaksi | Ditolak |
+| Koreksi | Membaca histori transaksi material arsip | Berhasil |
+| Koreksi | RPC koreksi dipanggil langsung untuk material arsip | Ditolak oleh function privat |
+| Catatan Owner | Owner membuat catatan dengan idempotency key baru | Tepat satu catatan |
+| Catatan Owner | Pembuatan catatan tanpa idempotency key | Ditolak; tidak ada catatan |
+| Catatan Owner | Request ulang identik (key, operasi, payload sama) | Catatan yang sama dikembalikan; jumlah catatan tidak bertambah |
+| Catatan Owner | Key sama, payload berbeda | Ditolak; tidak ada catatan baru |
+| Catatan Owner | Key yang sudah dipakai untuk operasi lain dipakai untuk membuat catatan | Ditolak; tidak di-replay sebagai hasil operasi lain |
+| Catatan Owner | Key berbeda, isi catatan identik | Dua catatan |
+| Catatan Owner | Dua request bersamaan dengan key yang sama | Tepat satu catatan |
+| Catatan Owner | Request pertama tersimpan tetapi respons tidak diterima, lalu retry dengan key yang sama | Tidak ada catatan ganda |
+| Catatan Owner | Staff Warehouse memanggil `create_note` | Ditolak |
+| Catatan Owner | Pengguna tanpa profil valid memanggil `create_note` | Ditolak |
+| Catatan Owner | Identitas pembuat dikirim sebagai parameter dari klien | Tidak dipakai; pembuat berasal dari `auth.uid()` |
+| Catatan Owner | Kegagalan di tengah pembuatan catatan | Tidak ada catatan maupun baris idempotency yang tertinggal |
+| Catatan Owner | RPC `create_note` dipanggil langsung tanpa Route Handler | Validasi role, key, dan identitas tetap berlaku |
+| Catatan Owner | Replay oleh pengguna yang role atau profilnya tidak lagi valid | Ditolak; hasil tersimpan tidak dikembalikan. Akun yang dinonaktifkan mengikuti OD-29 |
 
 ------------------------------------------------------------------------
 
@@ -1028,5 +1165,16 @@ Rekomendasi rinci tercatat di PRD kanonik dan STACK-DECISION-LOG. Status di bawa
 | OD-18 | Pola pembacaan data server-side | Terbuka | Tidak mengubah skema; RLS SELECT berlaku untuk jalur baca mana pun |
 | OD-19 | Normalisasi spasi nama kategori dan material | Terbuka | Pilihan penegakan di §4.2 (validasi saja, CHECK, atau seluruh tulis lewat function); jika lewat function, penulisan kategori pindah ke function (§7.2, §12.2). Unique index `lower(name)` tetap wajib apa pun hasilnya |
 | OD-20 | Idempotency untuk `create_stock_opname` | Terbuka | Apakah operasi ini memakai `idempotency_requests` (§9.1); tanpa itu, request ulang dapat menghasilkan sesi kosong tambahan yang hanya dapat dibatalkan |
+| OD-21 | Kewajiban dan waktu pengisian feedback Catatan Owner | Terbuka | Pemeriksaan di `complete_note` dan `save_note_feedback` |
+| OD-22 | Struktur feedback: satu record atau berversi | Terbuka | Kolom feedback di tabel catatan atau tabel feedback terpisah (§4.10) |
+| OD-23 | Pembatalan tinjauan; peninjauan catatan tanpa feedback | Terbuka | Ada tidaknya operasi batal tinjau; pemeriksaan feedback di `review_note` |
+| OD-24 | Edit atau hapus catatan setelah selesai atau ditinjau | Terbuka | Pemeriksaan kondisi di `update_note` dan `delete_note` |
+| OD-25 | Soft delete atau hard delete catatan | Terbuka | Kolom penanda hapus beserta filter baca, atau penghapusan baris |
+| OD-26 | Pembatalan checklist "Selesai" | Terbuka | Ada tidaknya operasi pengosongan data penyelesaian dan syaratnya |
+| OD-27 | Akses Staff Warehouse ke Riwayat Catatan | Terbuka | Policy SELECT untuk catatan di luar daftar aktif |
+| OD-28 | Hak baca profil pengguna lain | Terbuka | Policy SELECT `profiles` atau cara lain menampilkan nama pelaku; berdampak pada histori transaksi dan Catatan Owner |
+| OD-29 | Penonaktifan akun dan penanganan sesi aktif | Terbuka | Perlu tidaknya penanda status akun di `profiles` dan pemeriksaannya, atau pemakaian fitur Supabase Auth; belum dirancang |
 
 Keputusan A–F, termasuk penutupan OD-11 dan pencatatan OD-19 serta OD-20 sebagai keputusan terbuka, telah disinkronkan ke PRD kanonik (bagian Inventaris Keputusan dan requirement yang dipetakan di blok Keputusan Desain Database). Rincian teknis penegakan aturan tetap berada di dokumen ini.
+
+Pembaruan 30 Oktober 2026: ADR-09 sampai ADR-11 dan konsep Catatan Owner disinkronkan dari STACK-DECISION-LOG dan PRD kanonik; OD-21 sampai OD-29 dicatat sebagai keputusan terbuka.

@@ -1,7 +1,7 @@
 # PRD - Smart Warehouse Firaza
 
 > **Status dokumen:** PRD kanonik — sumber utama kebutuhan produk Smart Warehouse Firaza.
-> **Revisi:** Gelombang 2a, 29 Oktober 2026.
+> **Revisi:** Gelombang 2a, 29 Oktober 2026. Pembaruan 30 Oktober 2026: Catatan Owner (FR-NOTE), FR-AUTH-04 dan FR-AUTH-05, serta OD-21 sampai OD-29.
 >
 > - PRD ini menjadi acuan untuk kebutuhan produk dan aturan bisnis. Keputusan teknologi mengacu pada [STACK-DECISION-LOG.md](STACK-DECISION-LOG.md). Jika terjadi konflik lintas dokumen, konflik tersebut harus dilaporkan untuk diputuskan; jangan menganggap salah satu dokumen otomatis mengungguli dokumen lainnya.
 > - [PRD-Smart-Warehouse-Firaza-Professional.md](PRD-Smart-Warehouse-Firaza-Professional.md) bersifat historis; kebutuhan yang masih valid darinya sudah dikonsolidasikan ke dokumen ini.
@@ -50,8 +50,9 @@ Masalah spesifik yang ingin diselesaikan (disampaikan pengguna; sumber aslinya b
 - Membantu staff warehouse mencatat transaksi stok.
 - Menyediakan data inventory yang terstruktur dan dapat diaudit.
 - Memberikan informasi kondisi stok melalui dashboard.
+- Menyediakan saluran tugas, informasi operasional, dan reminder dari Owner kepada Staff Warehouse melalui Catatan Owner.
 
-Tujuan di atas berasal dari dokumentasi sebelumnya, dengan tambahan "dapat diaudit" sebagai konsekuensi keputusan audit trail [DITURUNKAN].
+Tujuan di atas berasal dari dokumentasi sebelumnya, dengan tambahan "dapat diaudit" sebagai konsekuensi keputusan audit trail [DITURUNKAN]. Tujuan Catatan Owner ditambahkan dari keputusan developer pada 30 Oktober 2026 [KEPUTUSAN].
 
 ## Target User dan Persona
 
@@ -62,12 +63,14 @@ Sistem memiliki **dua role**: Owner dan Staff Warehouse. Admin operasional terma
 - Pain point: membutuhkan informasi inventory secara cepat; membutuhkan monitoring tanpa pengecekan manual. (berasal dari PRD Professional)
 - Goal: memahami kondisi stok dan mendukung keputusan operasional, termasuk prioritas restock.
 - Peran: memantau inventori, aktivitas operasional, histori transaksi, dan Stock Opname. Owner tidak menimpa transaksi final. [KEPUTUSAN]
+- Terhadap domain inventori, Owner hanya membaca. Satu-satunya hak tulis Owner berada pada Catatan Owner: membuat, mengedit, dan menghapus catatan miliknya, serta menandai catatan yang sudah selesai sebagai "Sudah Ditinjau" (FR-NOTE). Hak ini tidak memberi Owner izin membuat transaksi stok, mengubah jumlah stok, mengubah data inventori sebagai operator, atau menjalankan Stock Opname. [KEPUTUSAN]
 
 ### Staff Warehouse
 
 - Pain point: membutuhkan pencatatan transaksi yang konsisten dan histori aktivitas inventory. (berasal dari PRD Professional)
 - Goal: mengelola stok dengan mudah dan benar.
 - Peran: menjalankan aktivitas gudang: kategori, material, Stock In, Stock Out, koreksi, dan Stock Opname. [KEPUTUSAN]
+- Pada Catatan Owner, Staff Warehouse membaca catatan, menandai pekerjaan selesai, serta menulis dan memperbarui feedback sebelum catatan ditinjau Owner (FR-NOTE). [KEPUTUSAN]
 
 ### Matriks Hak Akses
 
@@ -85,8 +88,15 @@ Sistem memiliki **dua role**: Owner dan Staff Warehouse. Admin operasional terma
 | Memposting sesi buatan Staff lain | Tidak | Belum diputuskan | [OPEN DECISION OD-16] |
 | Membatalkan sesi aktif milik siapa pun, dengan alasan wajib | Tidak | Ya | [KEPUTUSAN] |
 | Mengedit atau menghapus transaksi final | Tidak | Tidak | [KEPUTUSAN] |
+| Membuat Catatan Owner | Ya | Tidak | [KEPUTUSAN] |
+| Membaca Catatan Owner beserta kondisi penyelesaian, kondisi peninjauan, dan feedback | Ya | Ya | [KEPUTUSAN] |
+| Mengedit atau menghapus Catatan Owner miliknya | Ya | Tidak | [KEPUTUSAN]; setelah catatan selesai atau ditinjau: [OPEN DECISION OD-24]; metode hapus: [OPEN DECISION OD-25] |
+| Menandai catatan selesai (checklist "Selesai") | Tidak | Ya | [KEPUTUSAN] |
+| Menulis dan memperbarui feedback, selama catatan belum ditinjau | Tidak | Ya | [KEPUTUSAN] |
+| Menandai catatan yang sudah selesai sebagai "Sudah Ditinjau" | Ya | Tidak | [KEPUTUSAN] |
+| Membuka Riwayat Catatan | Ya | Belum diputuskan | Owner: [KEPUTUSAN]; Staff: [OPEN DECISION OD-27] |
 
-Otorisasi ditegakkan di backend dan database. Menyembunyikan tombol di UI bukan bentuk otorisasi. [KEPUTUSAN]
+Otorisasi ditegakkan di backend dan database. Menyembunyikan tombol di UI bukan bentuk otorisasi. [KEPUTUSAN] Hak tulis Owner terbatas pada Catatan Owner; terhadap inventori Owner tetap hanya membaca. [KEPUTUSAN]
 
 ## Pemetaan Fitur Brief ke Requirement
 
@@ -102,6 +112,8 @@ Otorisasi ditegakkan di backend dan database. Menyembunyikan tombol di UI bukan 
 
 Fitur tambahan dari dokumen lama yang tetap dipertahankan: Authentication dan role, Dashboard, Reporting, Search dan Filter.
 
+Fitur tambahan yang disetujui developer pada 30 Oktober 2026 sebagai bagian MVP: Catatan Owner (FR-NOTE). [KEPUTUSAN]
+
 ## Functional Requirements
 
 Detail aturan, validasi, dan pesan error setiap requirement dijabarkan di [FEATURE-SPECIFICATION-Smart-Warehouse-Firaza.md](FEATURE-SPECIFICATION-Smart-Warehouse-Firaza.md). Penegakan di database dijabarkan di [DATABASE-DESIGN-Smart-Warehouse-Firaza.md](DATABASE-DESIGN-Smart-Warehouse-Firaza.md).
@@ -109,8 +121,10 @@ Detail aturan, validasi, dan pesan error setiap requirement dijabarkan di [FEATU
 ### FR-AUTH — Autentikasi dan Otorisasi
 
 - **FR-AUTH-01** Pengguna login dan logout memakai email dan password melalui Supabase Auth. [KEPUTUSAN] [ADVISOR]
-- **FR-AUTH-02** Tidak ada registrasi publik; akun Owner dan Staff Warehouse dibuat oleh developer. [ASUMSI]
+- **FR-AUTH-02** Tidak ada registrasi publik: public signup di Supabase Auth dinonaktifkan. Akun Owner dan Staff Warehouse dibuat developer melalui provisioning manual; profil dan role disiapkan melalui prosedur admin terkontrol, tanpa trigger otomatis untuk membuat profil. [KEPUTUSAN] (STACK-DECISION-LOG ADR-11)
 - **FR-AUTH-03** Setiap operasi terlindungi memvalidasi sesi dan role di server, dan akses data dibatasi di database. [KEPUTUSAN]
+- **FR-AUTH-04** Akses akun dapat dinonaktifkan tanpa menghapus profil maupun histori audit yang terkait. Pengguna yang dinonaktifkan tidak boleh tetap memperoleh akses ke fitur bisnis aplikasi, dan sesi aktifnya harus ditangani secara aman. [KEPUTUSAN] (ADR-11) Mekanisme teknis penonaktifan akun dan penanganan sesi aktif belum diputuskan. [OPEN DECISION OD-29]
+- **FR-AUTH-05** Role hanya dapat ditetapkan atau diubah melalui proses admin terkontrol; pengguna tidak dapat menetapkan atau menaikkan role sendiri. Autentikasi yang berhasil tidak otomatis memberi otorisasi: pengguna tanpa profil valid atau tanpa hak akses yang sah tidak dapat mengakses fitur bisnis aplikasi, termasuk inventori dan Catatan Owner. Penolakan ini merupakan otorisasi aplikasi, bukan penolakan login di Supabase Auth. [KEPUTUSAN] (ADR-11)
 
 ### FR-CAT — Kategori Material
 
@@ -139,7 +153,7 @@ Detail aturan, validasi, dan pesan error setiap requirement dijabarkan di [FEATU
 - **FR-TRX-03** Setiap perubahan stok tercatat sebagai transaksi yang dapat diaudit, dengan `quantity_delta` bertanda (positif menambah, negatif mengurangi), pelaku, waktu, dan catatan. [KEPUTUSAN]
 - **FR-TRX-04** Stock In/Out menjadi transaksi final saat penyimpanan berhasil. Draft formulir tidak disimpan di database. [KEPUTUSAN]
 - **FR-TRX-05** Request yang dikirim ulang dengan idempotency key yang sama tidak menggandakan perubahan stok. Key yang sama dengan payload berbeda ditolak. [KEPUTUSAN] Ketentuan idempotency [KEPUTUSAN] (Keputusan E):
-  - Key unik per pengguna (pasangan pengguna dan key), dicatat dalam satu tabel idempotency yang dipakai lintas operasi mutasi yang relevan, yaitu Stock In/Out dan koreksi transaksi final.
+  - Key unik per pengguna (pasangan pengguna dan key), dicatat dalam satu tabel idempotency yang dipakai lintas operasi mutasi yang relevan. Untuk inventori, operasi tersebut adalah Stock In/Out dan koreksi transaksi final. Mekanisme yang sama juga dipakai pembuatan Catatan Owner (FR-NOTE-21); keunikan pasangan pengguna dan key berlaku lintas operasi tersebut.
   - Request ulang dengan key dan payload yang sama mengembalikan hasil operasi pertama tanpa mengulang mutasi (replay).
   - Tidak ada kedaluwarsa atau penghapusan otomatis catatan idempotency sebelum kebijakan retensi disetujui.
   - Operasi lain, seperti posting dan pembatalan sesi Stock Opname, mencegah duplikasi melalui pemeriksaan status atau constraint; request ulangnya ditolak, bukan di-replay. (DATABASE-DESIGN §9.1)
@@ -156,7 +170,7 @@ Tipe transaksi yang dikenal sistem: `OPENING_BALANCE`, `STOCK_IN`, `STOCK_OUT`, 
 - **FR-COR-01** Transaksi final tidak dapat diedit atau dihapus oleh siapa pun. Owner dapat meninjau histori tetapi tidak dapat menimpanya. [KEPUTUSAN]
 - **FR-COR-02** Koreksi dilakukan dengan transaksi `REVERSAL` yang merujuk transaksi awal dan membalik efeknya, ditambah transaksi pengganti yang mencatat nilai benar. Keduanya diproses atomik dan alasan koreksi wajib diisi. [KEPUTUSAN]
 - **FR-COR-03** Penyesuaian dari sesi Stock Opname yang telah diposting dikoreksi melalui sesi Stock Opname baru, bukan `REVERSAL`. [KEPUTUSAN]
-- **FR-COR-04** Koreksi ditolak jika material terkait sedang dibekukan [DITURUNKAN dari aturan pembekuan] atau jika hasilnya membuat stok negatif [DITURUNKAN dari larangan stok negatif].
+- **FR-COR-04** Koreksi ditolak jika material terkait sedang dibekukan [DITURUNKAN dari aturan pembekuan] atau jika hasilnya membuat stok negatif [DITURUNKAN dari larangan stok negatif]. Koreksi yang menulis transaksi pengubah stok, yaitu `REVERSAL` maupun transaksi pengganti, pada material yang diarsipkan juga ditolak sampai material tersebut direaktivasi sesuai FR-MAT-08; pemeriksaan ini berlaku untuk setiap material yang stoknya dimutasi oleh koreksi. Histori transaksi material arsip tetap dapat dibaca. [KEPUTUSAN]
 - **FR-COR-05** Koreksi memakai mekanisme idempotency yang sama dengan Stock In/Out. [KEPUTUSAN]
 - **FR-COR-06** Aturan koreksi berulang [KEPUTUSAN] (Keputusan D):
   - Satu transaksi asal paling banyak memiliki satu `REVERSAL`.
@@ -211,6 +225,53 @@ Tipe transaksi yang dikenal sistem: `OPENING_BALANCE`, `STOCK_IN`, `STOCK_OUT`, 
 - **FR-DASH-03** Informasi pergerakan stok yang berguna bagi Owner. Kuantitas dengan satuan berbeda tidak dijumlahkan. [DITURUNKAN] Bentuk widget ditentukan saat desain UI.
 - **FR-DASH-04** Data contoh yang belum berasal dari database diberi label "DATA DUMMY". [KEPUTUSAN]
 
+Dashboard juga memuat panel Catatan Owner di area utama dan ringkasan Catatan Owner di sidebar, yang diatur di FR-NOTE-12, FR-NOTE-13, dan FR-NOTE-20. Urutan penempatannya dijelaskan di bagian Arah UI/UX.
+
+### FR-NOTE — Catatan Owner
+
+Catatan Owner adalah saluran tugas, informasi operasional, atau reminder dari Owner kepada Staff Warehouse yang ditampilkan di dashboard. Fitur ini bukan chat, komentar bertingkat, notifikasi real-time, maupun penugasan ke banyak penerima. [KEPUTUSAN]
+
+Kondisi fungsional catatan [KEPUTUSAN]:
+
+| Kondisi | Arti | Tampilan |
+|---|---|---|
+| Belum selesai | Staff Warehouse belum menandai pekerjaan selesai | Teks dan kartu normal |
+| Selesai, menunggu tinjauan | Staff Warehouse sudah menandai "Selesai"; Owner belum menandai "Sudah Ditinjau" | Teks dicoret, kartu redup tetapi terbaca, label "Menunggu Tinjauan" |
+| Selesai, sudah ditinjau | Owner sudah menandai "Sudah Ditinjau" | Teks dicoret, kartu redup tetapi terbaca, label "Sudah Ditinjau"; feedback terkunci |
+
+Checklist "Selesai" (aksi Staff Warehouse) dan checklist "Sudah Ditinjau" (aksi Owner) adalah dua aksi terpisah dengan status yang tersimpan terpisah. Teks yang dicoret menandakan pekerjaan selesai, bukan bahwa Owner sudah meninjau.
+
+- **FR-NOTE-01** Owner dapat membuat catatan dengan isi tidak kosong. Tidak ada batas jumlah catatan yang dapat dibuat per hari. [KEPUTUSAN]
+- **FR-NOTE-02** Owner dan Staff Warehouse dapat membaca catatan beserta kondisi penyelesaian, kondisi peninjauan, dan feedback-nya, sesuai hak akses masing-masing; akses ke Riwayat Catatan mengikuti FR-NOTE-14. [KEPUTUSAN]
+- **FR-NOTE-03** Owner dapat mengedit isi catatan miliknya. [KEPUTUSAN] Aturan edit setelah catatan selesai atau ditinjau belum diputuskan. [OPEN DECISION OD-24]
+- **FR-NOTE-04** Owner dapat menghapus catatan miliknya. [KEPUTUSAN] Aturan hapus setelah catatan selesai atau ditinjau belum diputuskan [OPEN DECISION OD-24], begitu pula metode penghapusannya [OPEN DECISION OD-25].
+- **FR-NOTE-05** Catatan baru berada dalam kondisi belum selesai. [KEPUTUSAN]
+- **FR-NOTE-06** Staff Warehouse dapat menandai catatan selesai melalui checklist "Selesai". Satu catatan hanya memiliki satu penyelesai; identitas penyelesai dan waktu penyelesaian dicatat. [KEPUTUSAN] Catatan yang sudah selesai tidak dapat diselesaikan ulang oleh pengguna lain. [DITURUNKAN dari aturan satu penyelesai] Pembatalan checklist "Selesai" belum diputuskan. [OPEN DECISION OD-26]
+- **FR-NOTE-07** Staff Warehouse dapat menulis feedback di bawah catatan Owner; penulis dan waktu feedback dicatat. [KEPUTUSAN] Kewajiban mengisi feedback sebelum checklist "Selesai", serta boleh tidaknya feedback ditulis sebelum catatan selesai, belum diputuskan [OPEN DECISION OD-21]. Struktur feedback, yaitu satu record atau berversi, belum diputuskan [OPEN DECISION OD-22].
+- **FR-NOTE-08** Staff Warehouse dapat memperbarui feedback selama catatan belum ditinjau Owner. Setelah catatan ditandai "Sudah Ditinjau", feedback terkunci: perubahan ditolak oleh backend dan database, termasuk perubahan yang diminta di luar antarmuka aplikasi. [KEPUTUSAN]
+- **FR-NOTE-09** Owner dapat membaca feedback serta memantau kondisi dan waktu penyelesaian catatan. [KEPUTUSAN]
+- **FR-NOTE-10** Owner dapat menandai catatan sebagai "Sudah Ditinjau" hanya bila catatan sudah selesai. Identitas peninjau dan waktu peninjauan dicatat, dan kondisi peninjauan tersimpan terpisah dari kondisi penyelesaian. Staff Warehouse tidak dapat menandai "Sudah Ditinjau". [KEPUTUSAN] Pembatalan tinjauan dan peninjauan catatan selesai yang tidak memiliki feedback belum diputuskan. [OPEN DECISION OD-23]
+- **FR-NOTE-11** Staff Warehouse tidak dapat membuat Catatan Owner, mengubah isi asli catatan Owner, menghapus catatan Owner, maupun menandai "Sudah Ditinjau". Hak tulis Owner pada Catatan Owner tidak memberi hak membuat transaksi stok, mengubah jumlah stok, mengubah data inventori sebagai operator, atau menjalankan Stock Opname. [KEPUTUSAN] Owner tidak menandai catatan selesai dan tidak menulis feedback atas nama Staff Warehouse. [DITURUNKAN dari pembagian aksi Owner dan Staff Warehouse]
+- **FR-NOTE-12** Panel Catatan Owner di dashboard menampilkan maksimal 3 catatan dari daftar aktif (FR-NOTE-13), dengan catatan belum selesai diprioritaskan. Bila daftar aktif berisi lebih dari 3 catatan, tersedia akses "Lihat Semua Catatan". Batas 3 hanya berlaku untuk tampilan panel, bukan untuk jumlah data maupun jumlah catatan yang boleh dibuat. [KEPUTUSAN]
+- **FR-NOTE-13** Daftar aktif ditentukan oleh kondisi penyelesaian dan tanggal kalender `Asia/Jakarta` (WIB). Catatan belum selesai selalu termasuk, tanpa batas pergantian tanggal. Catatan selesai termasuk hanya sampai akhir tanggal WIB hari penyelesaiannya. Aturan ini berbasis tanggal kalender, bukan 24 jam sejak penyelesaian. Contoh: catatan yang diselesaikan 30 Oktober 2026 pukul 15.00 WIB termasuk daftar aktif sepanjang 30 Oktober 2026, dan tidak lagi termasuk mulai 31 Oktober 2026 pukul 00.00 WIB. [KEPUTUSAN]
+- **FR-NOTE-14** Catatan tidak dihapus otomatis. Catatan selesai beserta feedback-nya tetap tersimpan dan dapat dibuka melalui Riwayat Catatan; membuka riwayat tidak mengubah kondisi catatan maupun audit trail. Owner dapat membuka Riwayat Catatan untuk tanggal berapa pun. [KEPUTUSAN] Akses Staff Warehouse ke Riwayat Catatan belum diputuskan. [OPEN DECISION OD-27]
+- **FR-NOTE-15** Owner dapat menemukan catatan yang selesai tetapi belum ditinjau setelah catatan tersebut tidak lagi termasuk daftar aktif, lalu menandainya "Sudah Ditinjau". Peninjauan tidak bergantung pada keberadaan catatan di panel dashboard. [KEPUTUSAN]
+- **FR-NOTE-16** Identitas pelaku dan seluruh waktu aktivitas catatan (pembuatan, perubahan, penyelesaian, feedback, dan peninjauan) ditetapkan oleh server atau database berdasarkan sesi pengguna, bukan dari input browser. [KEPUTUSAN]
+- **FR-NOTE-17** Pada kondisi selesai, baik menunggu tinjauan maupun sudah ditinjau, teks catatan ditampilkan dicoret dan kartu ditampilkan lebih redup dengan teks tetap terbaca, bagi Owner maupun Staff Warehouse. Perubahan tampilan tidak mengubah isi catatan yang tersimpan. [KEPUTUSAN]
+- **FR-NOTE-18** Feedback ditampilkan di bawah isi catatan, tidak dicoret, dan tetap jelas terbaca pada setiap kondisi. [KEPUTUSAN]
+- **FR-NOTE-19** Kondisi "Menunggu Tinjauan" dan "Sudah Ditinjau" dibedakan dengan label teks yang berbeda dan jelas. [KEPUTUSAN]
+- **FR-NOTE-20** Sidebar dashboard menampilkan ringkasan Catatan Owner: jumlah catatan belum selesai, jumlah catatan yang diselesaikan pada tanggal WIB hari ini, dan shortcut menuju panel Catatan Owner atau daftar lengkap. Kedua jumlah dihitung dari seluruh data yang memenuhi kriteria, bukan hanya dari catatan yang tampil di panel. Sidebar tidak memuat isi catatan panjang, feedback lengkap, checklist "Selesai", maupun checklist "Sudah Ditinjau". [KEPUTUSAN]
+- **FR-NOTE-21** Pembuatan Catatan Owner wajib menggunakan idempotency key yang terikat pada pengguna terautentikasi; request tanpa key ditolak. Pengiriman ulang dengan key, operasi, dan payload yang sama mengembalikan hasil pembuatan sebelumnya tanpa membuat catatan baru, termasuk bila respons pertama tidak diterima pengguna. Key yang sama dengan payload atau operasi berbeda ditolak. Dua tindakan dengan key berbeda tetap dapat menghasilkan dua catatan berisi identik. Request bersamaan dengan key yang sama menghasilkan tepat satu catatan. [KEPUTUSAN]
+
+Rincian FR-NOTE-21 [KEPUTUSAN]:
+
+- Identitas pengguna untuk idempotency diambil dari sesi autentikasi yang valid, bukan dari parameter identitas yang dikirim browser (FR-NOTE-16).
+- Perbandingan request memakai payload relevan yang dikanonisasi beserta identitas operasi, bukan sekadar teks catatan. Algoritma dan format penyimpanannya ditetapkan di DATABASE-DESIGN.
+- Pembuatan catatan dan pencatatan idempotency berlangsung atomik.
+- Penyimpanan idempotency memakai mekanisme bersama dengan operasi inventori (FR-TRX-05, Keputusan E), termasuk ketentuan retensinya.
+- Hak membuat catatan tetap hanya untuk Owner dengan profil valid (FR-NOTE-01, FR-AUTH-05).
+- Hasil replay untuk catatan yang sudah dihapus mengikuti metode penghapusan yang belum diputuskan. [OPEN DECISION OD-25]
+
 ### FR-RPT — Laporan
 
 - **FR-RPT-01** Laporan inventori: material, kategori, satuan, `current_stock`, `minimum_stock`, status operasional. (berasal dari dokumentasi sebelumnya)
@@ -254,7 +315,7 @@ Pertanyaan untuk advisor atau tim Dicoding:
 
 - **NFR-01 Keamanan** — Otorisasi ditegakkan di server dan database; Row Level Security aktif; service role key hanya dipakai di server untuk seed/administrasi; secret tidak disimpan di repository. [KEPUTUSAN]
 - **NFR-02 Integritas data** — Constraint database, operasi atomik untuk perubahan stok, larangan stok negatif, dan referential integrity tanpa cascading delete. [KEPUTUSAN]
-- **NFR-03 Auditability** — Setiap perubahan stok, koreksi, pembatalan sesi, arsip, dan reaktivasi mencatat pelaku, waktu, dan alasan bila diwajibkan. [KEPUTUSAN]
+- **NFR-03 Auditability** — Setiap perubahan stok, koreksi, pembatalan sesi, arsip, dan reaktivasi mencatat pelaku, waktu, dan alasan bila diwajibkan. [KEPUTUSAN] Pada Catatan Owner, identitas pelaku dan waktu dicatat untuk pembuatan, penyelesaian, penulisan feedback, dan peninjauan (FR-NOTE-06, FR-NOTE-07, FR-NOTE-10, FR-NOTE-16); untuk perubahan isi catatan, yang dicatat adalah waktu perubahan terakhir. Ketentuan ini bukan riwayat lengkap setiap perubahan: jejak penghapusan mengikuti OD-25, dan riwayat revisi feedback mengikuti OD-22. [KEPUTUSAN]
 - **NFR-04 Data** — Tidak ada hardcode data dummy permanen sebagai pengganti koneksi API. [PDF hlm.1] Data sintetis disimpan di database melalui seed. [DITURUNKAN]
 - **NFR-05 Responsif** — Antarmuka dapat digunakan di mobile, tablet, dan desktop. [PDF hlm.1, Side Quest] (berasal dari dokumentasi sebelumnya)
 - **NFR-06 Usability** — Mudah digunakan oleh pengguna non-teknis. (berasal dari PRD Professional)
@@ -281,6 +342,19 @@ Status aset:
 
 - **Logo resmi Firaza Official belum tersedia di workspace.** Logo harus dipertahankan bentuk dan proporsinya; tidak boleh dibuat pengganti atau dimodifikasi tanpa persetujuan.
 - Gambar referensi dashboard (`firaza-dashboard-01-forest-linen.png`) berada di luar repository dan belum ditambahkan. Elemen huruf "F" pada gambar tersebut adalah placeholder, bukan logo resmi.
+
+Penempatan Catatan Owner pada dashboard [KEPUTUSAN]:
+
+- Desain dashboard yang sudah ada dipertahankan dengan identitas Forest & Linen. Dashboard tidak dirancang ulang, dan isi komponen lain tidak berubah.
+- Urutan area utama:
+  1. Empat kartu ringkasan stok.
+  2. Panel Catatan Owner (FR-NOTE-12 sampai FR-NOTE-19).
+  3. Grafik Pergerakan Stok dan Material per Kategori.
+  4. Tabel Material yang Perlu Perhatian.
+- Sidebar: ringkasan kecil Catatan Owner di ruang antara menu "06 Riwayat" dan kartu "Kondisi Gudang" (FR-NOTE-20).
+- Urutan dan posisi di atas mengacu pada gambar referensi dashboard. Widget Material per Kategori dan kartu Kondisi Gudang disebut sebagai patokan posisi; bagian ini tidak menetapkan keduanya sebagai requirement.
+- Ukuran, koordinat, dan perilaku responsif panel maupun ringkasan sidebar belum diverifikasi dan ditentukan saat implementasi UI.
+- Tampilan kondisi catatan memakai token Forest & Linen di atas, tanpa logo baru maupun aset gambar baru.
 
 ## Inventory Scope
 
@@ -310,22 +384,24 @@ Asumsi bahwa Firaza tidak memproduksi hampers sendiri belum terverifikasi sebaga
 - Aplikasi mobile native. (berasal dari dokumentasi sebelumnya)
 - Konversi satuan dan kuantitas pecahan. [KEPUTUSAN]
 - Role selain Owner dan Staff Warehouse. [KEPUTUSAN]
+- Pada Catatan Owner: chat, komentar bertingkat, notifikasi real-time, penugasan catatan ke banyak penerima, dan alur persetujuan berlapis. [KEPUTUSAN]
 
 ## Asumsi
 
-- Akun pengguna dibuat oleh developer; tidak ada registrasi publik.
+- Deployment MVP digunakan oleh satu Owner dan satu Staff Warehouse. Ini asumsi deployment, bukan batasan jumlah akun di sistem maupun di database. (Pembuatan akun kini merupakan keputusan; lihat FR-AUTH-02.)
 - Data operasional menggunakan dataset sintetis yang disimpan di database.
 - Material diperoleh dari vendor dalam unit utuh.
 - Developer bertindak sebagai Owner produk untuk menentukan asumsi operasional, karena pihak UMKM tidak dapat diajak berdiskusi lebih lanjut.
 
 ## Inventaris Keputusan
 
-Audit awal mencatat OD-01 sampai OD-15. OD-16 sampai OD-20 **tidak termasuk daftar audit awal**:
+Audit awal mencatat OD-01 sampai OD-15. OD-16 sampai OD-29 **tidak termasuk daftar audit awal**:
 
 - OD-16 ditemukan saat menyusun matriks hak akses PRD, karena kewenangan memposting sesi buatan Staff lain tidak tercakup oleh OD-02 maupun keputusan pembatalan sesi.
 - OD-17 ditambahkan karena tipe `OPENING_BALANCE` telah diputuskan, tetapi aturan dan validasinya belum didefinisikan.
 - OD-18 ditambahkan saat merevisi STACK-DECISION-LOG, karena pola pembacaan data oleh Server Components tidak diatur oleh keputusan REST API melalui Route Handlers.
 - OD-19 dan OD-20 ditambahkan saat merevisi DATABASE-DESIGN, karena normalisasi spasi nama dan idempotency pembuatan sesi Stock Opname belum diatur oleh keputusan mana pun.
+- OD-21 sampai OD-29 ditambahkan pada 30 Oktober 2026 saat merancang Catatan Owner dan keputusan akun (STACK-DECISION-LOG ADR-11). OD-21 sampai OD-27 menyangkut rincian Catatan Owner yang belum diputuskan, OD-28 menyangkut hak baca profil pengguna lain, dan OD-29 menyangkut mekanisme penonaktifan akun dan sesi.
 
 Keputusan desain database A–F disetujui developer pada 29 Oktober 2026 saat meninjau [DATABASE-DESIGN-Smart-Warehouse-Firaza.md](DATABASE-DESIGN-Smart-Warehouse-Firaza.md) dan tercermin pada requirement berikut: A → FR-CAT-03, FR-MAT-10; B → FR-MAT-05; C → FR-OPN-04 (menutup OD-11); D → FR-COR-06; E → FR-TRX-05; F → FR-MAT-11.
 
@@ -360,6 +436,15 @@ Rekomendasi di bawah **belum disetujui**. Rincian pilihan dan trade-off ada di [
 | OD-18 | Pola pembacaan data server-side oleh Server Components | Lihat STACK-DECISION-LOG |
 | OD-19 | Normalisasi spasi nama kategori dan material | Lihat DATABASE-DESIGN §4.2 |
 | OD-20 | Idempotency untuk pembuatan sesi Stock Opname (`create_stock_opname`) | Lihat DATABASE-DESIGN §9.1 |
+| OD-21 | Kewajiban mengisi feedback sebelum checklist "Selesai", serta boleh tidaknya feedback ditulis sebelum catatan selesai | Feedback tidak wajib; boleh ditulis kapan pun sebelum catatan ditinjau |
+| OD-22 | Struktur feedback: satu record per catatan atau berversi | Satu record per catatan yang dapat diperbarui sampai ditinjau |
+| OD-23 | Pembatalan tinjauan oleh Owner, dan peninjauan catatan selesai yang tidak memiliki feedback. Checklist "Sudah Ditinjau" dan penguncian feedback sudah diputuskan (FR-NOTE-08, FR-NOTE-10) | Pembatalan tinjauan tidak tersedia di MVP; peninjauan tanpa feedback diperbolehkan |
+| OD-24 | Edit atau hapus catatan oleh Owner setelah catatan selesai atau ditinjau | Isi catatan tidak dapat diedit setelah selesai, agar penyelesaian dan feedback tetap merujuk pada isi yang sama; penghapusan mengikuti OD-25. Trade-off: Owner harus membuat catatan baru untuk koreksi |
+| OD-25 | Metode penghapusan catatan: soft delete atau hard delete | Soft delete dengan pelaku dan waktu, agar riwayat dan feedback tidak hilang |
+| OD-26 | Pembatalan checklist "Selesai" oleh Staff Warehouse | Hanya oleh penyelesai dan sebelum catatan ditinjau |
+| OD-27 | Akses Staff Warehouse ke Riwayat Catatan | Staff Warehouse dapat membaca riwayat |
+| OD-28 | Hak baca profil pengguna lain, khususnya nama dan role. Berdampak pada tampilan pelaku di histori transaksi (FR-HIS-01) dan Catatan Owner | Pengguna ber-profil dapat membaca nama dan role pengguna lain |
+| OD-29 | Mekanisme teknis penonaktifan akun dan penanganan sesi aktif (FR-AUTH-04) | Belum ada rekomendasi teknis; dirancang dan diuji sebelum implementasi autentikasi (ADR-11) |
 
 ### OD-17 — Aturan dan Validasi Transaksi `OPENING_BALANCE`
 
@@ -406,4 +491,4 @@ Fitur AI pada brief tidak termasuk daftar ini; statusnya diatur di bagian Ruang 
 - [STACK-DECISION-LOG.md](STACK-DECISION-LOG.md) — keputusan teknologi.
 - [FEATURE-SPECIFICATION-Smart-Warehouse-Firaza.md](FEATURE-SPECIFICATION-Smart-Warehouse-Firaza.md) — aturan rinci per fitur.
 - [DATABASE-DESIGN-Smart-Warehouse-Firaza.md](DATABASE-DESIGN-Smart-Warehouse-Firaza.md) — skema, constraint, dan operasi atomik.
-- [PROJECT-CONTEXT-Smart-Warehouse-Firaza.md](PROJECT-CONTEXT-Smart-Warehouse-Firaza.md) — briefing untuk AI coding assistant.
+- [PROJECT-CONTEXT-Smart-Warehouse-Firaza.md](PROJECT-CONTEXT-Smart-Warehouse-Firaza.md) — briefing untuk AI coding assistant. Dokumen ini belum disinkronkan dengan keputusan arsitektur terbaru dan masih memuat stack lama. Jangan gunakan sebagai acuan implementasi teknologi sampai direvisi; ikuti [STACK-DECISION-LOG.md](STACK-DECISION-LOG.md) untuk keputusan stack yang berlaku.
