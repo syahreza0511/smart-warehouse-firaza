@@ -1,0 +1,151 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Light theme only: dark: utilities apply only under an explicit .dark class, never from the OS preference. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Forest & Linen tokens, exposed as Tailwind utilities (bg-forest, text-sage, ...). */
+@theme {
+  --color-forest: #183d32;
+  --color-linen: #f4f1e8;
+  --color-sage: #c8dd9a;
+  --color-ivory: #fffefa;
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+}
+
+/* shadcn/ui semantic tokens mapped to Forest & Linen (light theme only). */
+:root {
+  --background: #f4f1e8;
+  --foreground: #183d32;
+  --card: #fffefa;
+  --card-foreground: #183d32;
+  --popover: #fffefa;
+  --popover-foreground: #183d32;
+  --primary: #183d32;
+  --primary-foreground: #fffefa;
+  --secondary: #c8dd9a;
+  --secondary-foreground: #183d32;
+  --muted: #ece8dc;
+  --muted-foreground: #3f5a51;
+  --accent: #e6efcf;
+  --accent-foreground: #183d32;
+  --destructive: #b42318;
+  --destructive-foreground: #fffefa;
+  --border: #dcd6c6;
+  /* Form control borders: >= 3:1 against ivory and linen (WCAG 2.2 non-text contrast). */
+  --input: #788a80;
+  --ring: #183d32;
+  --radius: 0.75rem;
+
+  /* Aliases used by the existing page styles. */
+  --forest: var(--color-forest);
+  --linen: var(--color-linen);
+  --sage: var(--color-sage);
+  --ivory: var(--color-ivory);
+  --text: var(--foreground);
+  --text-muted: var(--muted-foreground);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* Custom styles live in layers so Tailwind utilities can override them. */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    min-height: 100vh;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  h1 {
+    margin: 0 0 0.75rem;
+    font-size: clamp(1.75rem, 5vw, 2.5rem);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+}
+
+@layer components {
+  .page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  .panel {
+    width: 100%;
+    max-width: 40rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: 6px solid var(--primary);
+    border-radius: 12px;
+    padding: 2rem 1.5rem;
+  }
+
+  .status {
+    display: inline-block;
+    margin: 0 0 1rem;
+    padding: 0.25rem 0.75rem;
+    background: var(--secondary);
+    color: var(--secondary-foreground);
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .lead {
+    margin: 0 0 1rem;
+    font-size: 1.0625rem;
+  }
+
+  .note {
+    margin: 0;
+    color: var(--text-muted);
+  }
+
+  @media (min-width: 768px) {
+    .panel {
+      padding: 2.5rem;
+    }
+  }
+}
