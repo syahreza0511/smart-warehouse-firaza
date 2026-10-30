@@ -1,11 +1,12 @@
 # Stack Decision Log — Smart Warehouse Firaza
 
 > **Status dokumen:** sumber utama keputusan teknologi Smart Warehouse Firaza.
-> **Revisi:** Gelombang 2a, 29 Oktober 2026. Pembaruan 30 Oktober 2026: ADR-09 sampai ADR-11.
+> **Revisi:** Gelombang 2a, 29 Oktober 2026. Pembaruan 30 Oktober 2026: ADR-09 sampai ADR-11, serta ADR-12 yang menutup OD-15.
 >
 > - Jika dokumen lain bertentangan dengan log ini dalam hal teknologi, log ini yang berlaku sampai dokumen tersebut direvisi.
 > - Kebutuhan produk dan aturan bisnis diatur di [PRD-Smart-Warehouse-Firaza-Dicoding.md](PRD-Smart-Warehouse-Firaza-Dicoding.md).
-> - Seluruh keputusan di bawah berstatus **[RENCANA — belum diimplementasikan]**. Belum ada kode aplikasi.
+> - Kecuali status implementasinya dicatat lain di ADR terkait, keputusan di bawah berstatus **[RENCANA — belum diimplementasikan]**.
+> - Fondasi aplikasi Next.js beserta integrasi dasar UI (ADR-12) telah dibuat dan lulus production build. Belum ada fitur bisnis, database, maupun autentikasi yang diimplementasikan.
 > - Label sumber mengikuti legenda di PRD kanonik. Tidak ada label tambahan di dokumen ini.
 
 ## Sumber Keputusan
@@ -161,6 +162,53 @@ Format setiap ADR (Architecture Decision Record): keputusan, sumber, alasan, tra
 - **Dampak:** PRD bagian autentikasi dan DATABASE-DESIGN §4.1 perlu diselaraskan.
 - **Tindak lanjut:** Rancang dan uji mekanisme penonaktifan akun serta penanganan sesi aktif (OD-29).
 
+### ADR-12 — Pilihan CSS Framework, UI Components, HTTP Client, Schema Validation, dan Deployment Platform
+
+- **Tanggal:** 30 Oktober 2026.
+- **Status keputusan:** Final, diterima (Accepted). Status implementasi dicatat terpisah di bawah dan tidak sama dengan status keputusan.
+- **Konteks:** OD-15 mencatat lima pilihan teknologi yang belum diputuskan: framework CSS, komponen UI, HTTP client di antarmuka, library schema validation, dan platform deploy. Kelima topik ini berkaitan dengan Side Quest pada checklist tech stack [PDF hlm.1]. Pilihan, trade-off, dan rekomendasi awal tetap tercatat di bagian OD-15 sebagai jejak historis.
+- **Alternatif utama yang dipertimbangkan:** CSS Modules bawaan Next.js atau Bootstrap (framework CSS); komponen buatan sendiri (komponen UI); `fetch` bawaan (HTTP client); Joi (schema validation); Netlify atau platform lain (deploy).
+- **Keputusan:** [KEPUTUSAN]
+  - Framework CSS: Tailwind CSS v4.
+  - Komponen UI: shadcn/ui, berbasis Radix UI, dengan style `radix-nova`, dalam mode JavaScript (ADR-02).
+  - HTTP client di antarmuka: Axios.
+  - Schema validation: Zod v4.
+  - Platform deploy: Vercel, khusus untuk demonstrasi capstone nonkomersial.
+- **Sumber:** [KEPUTUSAN]; kelima topik berasal dari Side Quest [PDF hlm.1].
+- **Alasan:**
+  - Tailwind CSS v4 memenuhi Side Quest "CSS Framework", menjadi dasar shadcn/ui, dan memungkinkan token warna Forest & Linen dipetakan sebagai token tema.
+  - shadcn/ui memenuhi Side Quest "Modern UI Components" dan memakai primitive Radix UI yang dirancang aksesibel. Source komponen disalin ke repository sehingga dapat disesuaikan dengan tema.
+  - Axios disebut eksplisit pada Side Quest dan memudahkan penanganan error HTTP terpusat untuk pemanggilan Route Handlers.
+  - Zod memungkinkan satu skema dipakai untuk validasi form di antarmuka dan validasi input di Route Handlers.
+  - Vercel dikembangkan oleh pembuat Next.js sehingga konfigurasi deploy paling sedikit.
+- **Trade-off:**
+  - Kelas utilitas Tailwind membuat markup lebih panjang.
+  - Komponen shadcn/ui menjadi source milik proyek: pembaruan dari upstream tidak otomatis dan harus ditinjau manual.
+  - Axios dan Zod menambah dependency aplikasi dibanding `fetch` bawaan dan validasi manual.
+  - Paket gratis Vercel memiliki batasan pemakaian. Project Supabase paket gratis dapat dijeda bila tidak aktif, sehingga perlu dicek menjelang demo.
+- **Konsekuensi dependency dan maintenance:**
+  - Versi dependency dikunci tepat (tanpa rentang) di `package.json` dan `package-lock.json`.
+  - CLI `shadcn` dan `tw-animate-css` berada di `devDependencies`; komponen yang dihasilkan CLI disimpan di `components/ui/`.
+  - Audit dependency per 30 Oktober 2026: 3 temuan berseverity low pada jalur dev/build (`shadcn` → `@shadcn/registry` → `deepmerge`); dependency produksi tanpa temuan. Risiko ini dipantau dan belum diperbaiki.
+- **Batas keamanan dan arsitektur:**
+  - Axios dipakai untuk komunikasi antarmuka dengan REST API `/api/v1` (ADR-05). Axios tidak menggantikan Supabase JavaScript client (`@supabase/supabase-js`) untuk akses autentikasi dan database (ADR-04, ADR-06).
+  - Zod v4 dipakai untuk validasi input API dan form. Zod tidak menggantikan otorisasi, Row Level Security, constraint database, idempotency, maupun transaksi stok atomik (ADR-08, ADR-09).
+  - Vercel belum dikonfigurasi dan belum dipakai untuk deployment. Jika proyek kemudian dioperasikan secara komersial oleh pihak lain, ketentuan hosting, pengelolaan secrets, dan tanggung jawab operasional harus dinilai ulang.
+- **Status implementasi per 30 Oktober 2026:**
+
+  | Pilihan | Status |
+  |---|---|
+  | Tailwind CSS v4 | Terpasang dan diuji dengan production build |
+  | shadcn/ui (`radix-nova`) | Terkonfigurasi; komponen Button dan Card tersedia; Card dipakai di halaman awal dan diuji dengan production build |
+  | Axios | Belum dipasang |
+  | Zod v4 | Belum dipasang sebagai dependency langsung aplikasi |
+  | Vercel | Belum dikonfigurasi maupun di-deploy |
+
+  Konfigurasi UI saat ini hanya memuat tema terang Forest & Linen. Variant `dark:` dibatasi pada class `.dark` sehingga tidak aktif dari preferensi tema sistem operasi; dukungan dark mode belum diputuskan. Belum ada antarmuka fitur bisnis.
+- **Hubungan dengan ADR lain:** Menutup OD-15. Tidak mengubah ADR-01 sampai ADR-11. Tidak ada ADR sebelumnya yang menetapkan CSS tanpa framework; CSS biasa hanya dipakai pada scaffold awal sebelum keputusan ini.
+- **Dampak:** Bagian Side Quest di bawah diperbarui. PRD (Inventaris Keputusan) dan DATABASE-DESIGN (§15) menandai OD-15 sebagai diputuskan. Keputusan ini tidak berdampak pada skema database.
+- **Tindak lanjut:** Pasang Axios dan Zod pada checkpoint implementasi lapisan API; konfigurasi deploy Vercel pada checkpoint tersendiri setelah fitur inti dan pengelolaan secrets siap.
+
 ## Kepatuhan Checklist Tech Stack
 
 Sumber: `List Tech Stack [Dicoding Bootcamp Batch 15] - Tipe Capstone_ Individu.pdf`, halaman 1, kolom Full-Stack Web Developer [PDF hlm.1]. Status "Direncanakan" berarti belum diimplementasikan maupun diuji.
@@ -190,14 +238,14 @@ Sumber: `List Tech Stack [Dicoding Bootcamp Batch 15] - Tipe Capstone_ Individu.
 | Framework untuk One Man Developer (Next JS, dll.) | ADR-01 | Direncanakan |
 | API dengan Express atau framework lain yang relevan (gaya FE & BE) | Route Handlers (ADR-05) | Belum terkonfirmasi apakah termasuk "framework lain yang relevan" |
 | Git dan GitHub | Repository GitHub proyek | Direncanakan |
-| CSS Framework dan Modern UI Components | Framework CSS dan komponen UI: OD-15 (kandidat: Tailwind CSS, shadcn/ui) | Terbuka |
-| Schema Validation pada backend | Library: OD-15 | Terbuka |
-| HTTP Library (Axios) | OD-15 | Terbuka |
-| Deploy ke server atau layanan cloud | Platform: OD-15 | Terbuka |
+| CSS Framework dan Modern UI Components | Tailwind CSS v4 dan shadcn/ui (ADR-12) | Pilihan disetujui; integrasi dasar sudah dilakukan (belum ada antarmuka fitur) |
+| Schema Validation pada backend | Zod v4 (ADR-12) | Pilihan disetujui; implementasi belum dilakukan |
+| HTTP Library (Axios) | Axios (ADR-12) | Pilihan disetujui; implementasi belum dilakukan |
+| Deploy ke server atau layanan cloud | Vercel, untuk demonstrasi capstone nonkomersial (ADR-12) | Pilihan disetujui; deployment belum dilakukan |
 
-## Keputusan Terbuka — OD-15
+## Keputusan OD-15 — Ditutup melalui ADR-12
 
-**Status:** [OPEN DECISION OD-15]. Rekomendasi di bawah **belum disetujui**.
+**Status:** Diputuskan pada 30 Oktober 2026 melalui ADR-12. Tabel di bawah dipertahankan sebagai jejak historis pilihan dan trade-off yang dipertimbangkan sebelum keputusan; kolom Rekomendasi berisi rekomendasi saat OD-15 masih terbuka. Keputusan yang berlaku tercatat di ADR-12.
 
 | Topik | Pilihan | Trade-off | Rekomendasi |
 |---|---|---|---|
@@ -244,10 +292,10 @@ Hal berikut perlu dikonfirmasi ke advisor atau tim Dicoding dan tidak boleh dian
 
 | Dokumen | Status | Jadwal |
 |---|---|---|
-| `PRD-Smart-Warehouse-Firaza-Dicoding.md` | Selaras (PRD kanonik). Diperbarui 30 Oktober 2026: 83 FR termasuk Catatan Owner (FR-NOTE), FR-AUTH-04 dan FR-AUTH-05 sesuai ADR-11, serta OD-21 sampai OD-29. OD-15 dan OD-18 tercatat sebagai keputusan terbuka | Sinkronisasi dokumentasi selesai; keputusan terbuka masih menunggu persetujuan |
+| `PRD-Smart-Warehouse-Firaza-Dicoding.md` | Selaras (PRD kanonik). Diperbarui 30 Oktober 2026: 83 FR termasuk Catatan Owner (FR-NOTE), FR-AUTH-04 dan FR-AUTH-05 sesuai ADR-11, serta OD-21 sampai OD-29. OD-15 ditandai diputuskan melalui ADR-12; OD-18 tercatat sebagai keputusan terbuka | Sinkronisasi dokumentasi selesai; keputusan terbuka masih menunggu persetujuan |
 | `PRD-Smart-Warehouse-Firaza-Professional.md` | Historis | Ditandai Gelombang 2a |
 | `FEATURE-SPECIFICATION-Smart-Warehouse-Firaza.md` | Selaras. Diperbarui 30 Oktober 2026 beserta koreksi lanjutan: autentikasi Supabase Auth dan akun sesuai ADR-04 dan ADR-11, aturan inventori sesuai PRD, dan Catatan Owner (§12a). Seluruh fitur masih berstatus rencana; belum ada implementasi | Sinkronisasi dokumentasi selesai; keputusan terbuka masih menunggu persetujuan |
-| `DATABASE-DESIGN-Smart-Warehouse-Firaza.md` | Selaras. Diperbarui 30 Oktober 2026 beserta koreksi lanjutan: Supabase PostgreSQL, SQL migration dengan Supabase CLI (ADR-07, ADR-10), pola keamanan RPC (ADR-09), dan konsep Catatan Owner (§4.10). Schema final, grant, SQL migration, dan sejumlah rekomendasi keamanan (§12.4) belum diputuskan; ERD belum memuat Catatan Owner | Sinkronisasi dokumentasi selesai; desain final menunggu keputusan terbuka |
+| `DATABASE-DESIGN-Smart-Warehouse-Firaza.md` | Selaras. Diperbarui 30 Oktober 2026 beserta koreksi lanjutan: Supabase PostgreSQL, SQL migration dengan Supabase CLI (ADR-07, ADR-10), pola keamanan RPC (ADR-09), dan konsep Catatan Owner (§4.10). OD-15 ditandai diputuskan melalui ADR-12 di §15, tanpa dampak pada skema. Schema final, grant, SQL migration, dan sejumlah rekomendasi keamanan (§12.4) belum diputuskan; ERD belum memuat Catatan Owner | Sinkronisasi dokumentasi selesai; desain final menunggu keputusan terbuka |
 | `PROJECT-CONTEXT-Smart-Warehouse-Firaza.md` | Masih memuat stack lama | Gelombang 2a |
 | `API-DOCUMENTATION`, `CODING-GUIDELINE`, `DEVELOPMENT-TASK`, `ENVIRONMENT-CONFIGURATION`, `USER-FLOW`, `PROJECT-MEMORY`, `README-Smart-Warehouse-Firaza.md`, AI guides, GitHub workflow guide | Masih memuat stack lama (React + Vite, Express, Prisma, JWT) sebagian atau seluruhnya | Gelombang 2b |
 | `PRD-TYPESCRIPT-VARIANT-Smart-Warehouse-Firaza.md`, `SMART-WAREHOUSE-FIRAZA-JAVASCRIPT-VS-TYPESCRIPT-COMPARISON.md` | Tidak aktif (ADR-02) | Penandaan di file: Gelombang 2b |

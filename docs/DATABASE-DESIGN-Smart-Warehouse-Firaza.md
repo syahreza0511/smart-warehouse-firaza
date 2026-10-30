@@ -6,7 +6,7 @@
 > **Revisi:** Gelombang 2a, 29 Oktober 2026. Pembaruan 30 Oktober 2026: penyelarasan dengan ADR-09 sampai ADR-11, konsep Catatan Owner (§4.10), dan OD-21 sampai OD-29.
 >
 > - Kebutuhan produk mengacu pada [PRD-Smart-Warehouse-Firaza-Dicoding.md](PRD-Smart-Warehouse-Firaza-Dicoding.md) (PRD kanonik) dan [FEATURE-SPECIFICATION-Smart-Warehouse-Firaza.md](FEATURE-SPECIFICATION-Smart-Warehouse-Firaza.md). Keputusan teknologi mengacu pada [STACK-DECISION-LOG.md](STACK-DECISION-LOG.md).
-> - Seluruh isi dokumen ini berstatus **[RENCANA — belum diimplementasikan]**. Belum ada SQL migration, database, maupun kode aplikasi. Belum ada constraint, function, atau policy yang diuji.
+> - Seluruh isi dokumen ini berstatus **[RENCANA — belum diimplementasikan]**. Belum ada SQL migration maupun database; desain ini belum diimplementasikan sebagai objek database. Fondasi aplikasi Next.js sudah dibuat, tetapi belum terhubung ke database. Belum ada constraint, function, atau policy yang diuji.
 > - Dokumen ini menjelaskan desain, bukan artefak yang dapat dieksekusi. Ekspresi seperti `current_stock >= 0` atau `lower(name)` ditulis sebagai penjelasan aturan; SQL migration dibuat terpisah pada tahap implementasi.
 > - Label sumber mengikuti legenda di PRD kanonik. Pilihan teknis yang belum disetujui ditulis sebagai **rekomendasi** dalam teks biasa, tanpa label tambahan.
 
@@ -1159,7 +1159,7 @@ Rekomendasi rinci tercatat di PRD kanonik dan STACK-DECISION-LOG. Status di bawa
 | OD-09 | Koreksi tanpa transaksi pengganti | Terbuka | Apakah data pengganti di `correct_transaction` wajib |
 | OD-10 | Pengganti dengan material atau tipe berbeda | Terbuka | Jumlah material yang dikunci dan validasi tipe di `correct_transaction` |
 | OD-11 | Penanda pembekuan material | **Diputuskan** (Keputusan C): `materials.active_opname_id` | §4.3, §11 |
-| OD-15 | Library dan platform | Terbuka | Tidak berdampak pada skema |
+| OD-15 | Library dan platform | **Diputuskan** (STACK-DECISION-LOG ADR-12) | Tidak berdampak pada skema |
 | OD-16 | Staff lain memposting sesi | Terbuka | Pemeriksaan kewenangan di `post_stock_opname`; `posted_by` tersedia |
 | OD-17 | Aturan `OPENING_BALANCE` | Terbuka | Syarat tanda, keunikan per material, function pencatatan, koreksi, idempotency, dan pembekuan untuk tipe ini |
 | OD-18 | Pola pembacaan data server-side | Terbuka | Tidak mengubah skema; RLS SELECT berlaku untuk jalur baca mana pun |
@@ -1177,4 +1177,4 @@ Rekomendasi rinci tercatat di PRD kanonik dan STACK-DECISION-LOG. Status di bawa
 
 Keputusan A–F, termasuk penutupan OD-11 dan pencatatan OD-19 serta OD-20 sebagai keputusan terbuka, telah disinkronkan ke PRD kanonik (bagian Inventaris Keputusan dan requirement yang dipetakan di blok Keputusan Desain Database). Rincian teknis penegakan aturan tetap berada di dokumen ini.
 
-Pembaruan 30 Oktober 2026: ADR-09 sampai ADR-11 dan konsep Catatan Owner disinkronkan dari STACK-DECISION-LOG dan PRD kanonik; OD-21 sampai OD-29 dicatat sebagai keputusan terbuka.
+Pembaruan 30 Oktober 2026: ADR-09 sampai ADR-11 dan konsep Catatan Owner disinkronkan dari STACK-DECISION-LOG dan PRD kanonik; OD-21 sampai OD-29 dicatat sebagai keputusan terbuka. OD-15 diputuskan melalui STACK-DECISION-LOG ADR-12; tidak ada perubahan skema.

@@ -6,7 +6,7 @@
 > **Revisi:** Gelombang 2a, 29 Oktober 2026. Pembaruan 30 Oktober 2026: Catatan Owner (§12a), akun dan akses (§3, §4), serta penyelarasan aturan material, kategori, idempotency, dan koreksi dengan PRD.
 >
 > - Kebutuhan produk dan aturan bisnis mengacu pada PRD kanonik, [PRD-Smart-Warehouse-Firaza-Dicoding.md](PRD-Smart-Warehouse-Firaza-Dicoding.md). Keputusan teknologi mengacu pada [STACK-DECISION-LOG.md](STACK-DECISION-LOG.md). Jika terjadi konflik lintas dokumen, laporkan konflik tersebut untuk diputuskan; jangan menetapkan prioritas secara otomatis.
-> - Seluruh fitur di dokumen ini berstatus **[RENCANA — belum diimplementasikan]**. Belum ada kode aplikasi dan belum ada fitur yang diuji.
+> - Seluruh fitur di dokumen ini berstatus **[RENCANA — belum diimplementasikan]**. Yang sudah ada baru fondasi aplikasi Next.js (STACK-DECISION-LOG ADR-12): halaman awal tanpa data yang lulus production build. Belum ada fitur bisnis yang diimplementasikan maupun diuji, termasuk autentikasi Supabase Auth, REST API bisnis, transaksi stok, dan Stock Opname.
 > - Label sumber mengikuti legenda di PRD kanonik. Tidak ada label tambahan di dokumen ini.
 > - Rincian pilihan dan rekomendasi keputusan terbuka (OD) dicatat di PRD kanonik dan STACK-DECISION-LOG; dokumen ini hanya menandai di langkah mana keputusan terbuka berpengaruh.
 

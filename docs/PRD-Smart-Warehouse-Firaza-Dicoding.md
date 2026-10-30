@@ -1,11 +1,11 @@
 # PRD - Smart Warehouse Firaza
 
 > **Status dokumen:** PRD kanonik — sumber utama kebutuhan produk Smart Warehouse Firaza.
-> **Revisi:** Gelombang 2a, 29 Oktober 2026. Pembaruan 30 Oktober 2026: Catatan Owner (FR-NOTE), FR-AUTH-04 dan FR-AUTH-05, serta OD-21 sampai OD-29.
+> **Revisi:** Gelombang 2a, 29 Oktober 2026. Pembaruan 30 Oktober 2026: Catatan Owner (FR-NOTE), FR-AUTH-04 dan FR-AUTH-05, OD-21 sampai OD-29, serta penutupan OD-15 melalui STACK-DECISION-LOG ADR-12.
 >
 > - PRD ini menjadi acuan untuk kebutuhan produk dan aturan bisnis. Keputusan teknologi mengacu pada [STACK-DECISION-LOG.md](STACK-DECISION-LOG.md). Jika terjadi konflik lintas dokumen, konflik tersebut harus dilaporkan untuk diputuskan; jangan menganggap salah satu dokumen otomatis mengungguli dokumen lainnya.
 > - [PRD-Smart-Warehouse-Firaza-Professional.md](PRD-Smart-Warehouse-Firaza-Professional.md) bersifat historis; kebutuhan yang masih valid darinya sudah dikonsolidasikan ke dokumen ini.
-> - Seluruh fitur di dokumen ini berstatus **[RENCANA — belum diimplementasikan]**. Belum ada kode aplikasi.
+> - Seluruh fitur di dokumen ini berstatus **[RENCANA — belum diimplementasikan]**. Yang sudah ada baru fondasi aplikasi Next.js dengan Tailwind CSS v4 dan shadcn/ui (STACK-DECISION-LOG ADR-12): halaman awal tanpa data yang lulus production build. Belum ada fitur bisnis, autentikasi, maupun database yang diimplementasikan.
 
 ## Legenda Label Sumber
 
@@ -418,6 +418,7 @@ Keputusan desain database A–F disetujui developer pada 29 Oktober 2026 saat me
 | OD-12 | Idempotency dan aksi berulang | Inti final; bentuk respons HTTP dirinci di dokumentasi API (Gelombang 2b) | FR-TRX-05, FR-COR-05 |
 | OD-13 | Perubahan satuan setelah ada histori | Final (diturunkan): tidak dapat diubah | FR-MAT-03 |
 | OD-14 | Pergerakan stok lintas satuan | Aturan final (diturunkan); bentuk widget ditentukan saat desain UI | FR-DASH-03 |
+| OD-15 | Framework CSS, komponen UI, HTTP client, library schema validation, platform deploy | Final (30 Oktober 2026): Tailwind CSS v4; shadcn/ui dengan Radix UI, style `radix-nova`; Axios; Zod v4; Vercel, khusus demonstrasi capstone nonkomersial. Status implementasi tercatat terpisah di ADR-12 | STACK-DECISION-LOG ADR-12 |
 
 ### Keputusan terbuka
 
@@ -430,7 +431,6 @@ Rekomendasi di bawah **belum disetujui**. Rincian pilihan dan trade-off ada di [
 | OD-05 | Mengarsipkan material yang sedang dibekukan | Tolak pengarsipan selama material dibekukan |
 | OD-09 | Transaksi duplikat yang seharusnya tidak ada | `REVERSAL` tanpa transaksi pengganti, alasan wajib |
 | OD-10 | Transaksi pengganti dengan material atau tipe berbeda | Diizinkan untuk `STOCK_IN`/`STOCK_OUT`; semua material terkait dikunci dalam satu transaksi |
-| OD-15 | Framework CSS, HTTP client (`fetch` atau Axios), komponen UI, library schema validation, platform deploy | Lihat STACK-DECISION-LOG |
 | OD-16 | Kewenangan memposting sesi buatan Staff lain | Semua Staff Warehouse, dengan pelaku posting dicatat, agar konsisten dengan rekomendasi OD-02. Trade-off: Staff dapat memposting hasil hitung yang diisi orang lain; alternatif "hanya pembuat sesi" lebih ketat tetapi sesi dapat tertahan bila pembuat berhalangan |
 | OD-17 | Aturan dan validasi transaksi `OPENING_BALANCE` | Lihat rincian di bawah |
 | OD-18 | Pola pembacaan data server-side oleh Server Components | Lihat STACK-DECISION-LOG |
