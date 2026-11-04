@@ -3,10 +3,23 @@
 # Smart Warehouse Firaza
 
 > **Status dokumen:** desain database Smart Warehouse Firaza.
-> **Revisi:** Gelombang 2a, 29 Oktober 2026. Pembaruan 30 Oktober 2026: penyelarasan dengan ADR-09 sampai ADR-11, konsep Catatan Owner (§4.10), dan OD-21 sampai OD-29.
+> **Revisi:** Gelombang 2a, 29 Oktober 2026. Pembaruan 30 Oktober 2026: penyelarasan dengan ADR-09 sampai ADR-11, konsep Catatan Owner (§4.10), dan OD-21 sampai OD-29. Pembaruan 31 Oktober 2026: baseline keamanan database dan aturan migration sesuai ADR-13. Pembaruan lanjutan 31 Oktober 2026: status implementasi dan uji lokal, desain prosedur admin siklus akun sesuai ADR-14, serta koreksi kontrak idempotency (`request_fingerprint` dan urutan pemeriksaan expected state). Pembaruan 1 November 2026: migration admin (langkah 1a) diterapkan dan diuji di lokal; bukti uji §14.5, temuan urutan ban (§12.5.4), dan keputusan terbuka G1–G3 (STACK-DECISION-LOG ADR-14) disinkronkan. Pembaruan lanjutan 1 November 2026: G1–G3 disetujui pemilik proyek sebagai kebijakan MVP lokal; perilaku terpasang dan perilaku target G1 dibedakan (§12.5.6), durasi ban G2 dan runbook manual G3 dicatat (§12.5.5–§12.5.7); G1 belum diimplementasikan, dan OD-29 tetap terbuka. Pembaruan 1 November 2026 (7SUP.4B-3I): G1 diterapkan sebagai migration keempat (§14.2 langkah 1b) dan lulus uji terarah di lokal; status §14.5 #21, #27, #31, dan #40 disinkronkan; OD-29 tetap terbuka. Pembaruan 1 November 2026 (7SUP.5A-2 dan 7SUP.5A-3): migration kelima (§14.2 langkah 2–7) dan data demo lokal, RPC `post_stock_movement`, otorisasi fail-closed (STACK-DECISION-LOG ADR-15), Route Handler yang memakainya, serta penutupan OD-18 dengan Pilihan C; status §14.5 #1, #2, #5, dan #6 diperbarui. Pembaruan 1 November 2026 (7SUP.5A-3B): hasil uji penerimaan browser manual dan rekonsiliasi data lokal sesudahnya dicatat di §15, termasuk satu sesi Auth tertinggal sebagai residual risk; skema dan migration tidak berubah, dan OD-29 tetap terbuka. Pembaruan 2 November 2026 (7SUP.5B-2B dan 7SUP.5B-3A): bukti uji HTTP Stock Out, insiden 7SUP.5B-3A beserta keputusan K3, baseline lokal yang disahkan (K4), dan penundaan uji mutasi (K5) dicatat di §15; skema dan migration tidak berubah. Pembaruan 4 November 2026 (DOC-SYNC-01): status Git migration disinkronkan; skema dan migration tidak berubah.
 >
 > - Kebutuhan produk mengacu pada [PRD-Smart-Warehouse-Firaza-Dicoding.md](PRD-Smart-Warehouse-Firaza-Dicoding.md) (PRD kanonik) dan [FEATURE-SPECIFICATION-Smart-Warehouse-Firaza.md](FEATURE-SPECIFICATION-Smart-Warehouse-Firaza.md). Keputusan teknologi mengacu pada [STACK-DECISION-LOG.md](STACK-DECISION-LOG.md).
-> - Seluruh isi dokumen ini berstatus **[RENCANA — belum diimplementasikan]**. Belum ada SQL migration maupun database; desain ini belum diimplementasikan sebagai objek database. Fondasi aplikasi Next.js sudah dibuat, tetapi belum terhubung ke database. Belum ada constraint, function, atau policy yang diuji.
+> - Kecuali disebutkan lain, isi dokumen ini berstatus **[RENCANA — belum diimplementasikan]**.
+> - Yang sudah diimplementasikan, hanya di Supabase **lokal**, adalah §14.2 langkah 0, 1, 1a, dan 1b: baseline keamanan, schema `app_private`, enum `user_role`, tabel `profiles` (termasuk `deactivated_at` dan `session_valid_after`), policy baca profil sendiri, helper `app_private.current_app_role()`, tabel audit `app_private.account_lifecycle_events` (§4.11), dan enam function admin (§12.5.8). Semuanya diterapkan melalui empat SQL migration: `20261031084000_security_baseline.sql`, `20261031084100_profiles_authz_foundation.sql`, `20261031163955_account_lifecycle_admin.sql`, dan `20261101044858_admin_role_change_session_cutoff.sql` (G1: perubahan role memajukan cutoff sesi). Langkah 2–7 diterapkan melalui migration kelima `20261101064015_inventory_stock_movement_foundation.sql` (7SUP.5A-2), yang membuat:
+>   - Enum bisnis.
+>   - Tabel `categories`, `materials`, `material_status_events`, `stock_opname`, `stock_opname_items` (skema saja), dan `inventory_transactions`.
+>   - Tabel `app_private.idempotency_requests`.
+>   - RPC `post_stock_movement` (`STOCK_IN` dan `STOCK_OUT`).
+>   - View `material_stock_status`.
+> - Yang sudah diuji di lokal: atomicity migration Supabase CLI (§14.1), default-deny dan grant pada objek tersebut, uji integrasi dengan Supabase Auth asli untuk otorisasi `profiles`, penonaktifan, dan cutoff sesi, function admin siklus akun termasuk konkurensi dan audit, urutan ban dan pencabutan ban Auth, serta batas eksposur Data API (§12.5, §14.5). Status per skenario tercatat di §14.5. Fondasi inventori dan RPC lulus uji database (7SUP.5A-2), dan Route Handler Next.js yang memakainya lulus uji HTTP (7SUP.5A-3). Rinciannya ada di §15.
+> - Status Git (4 November 2026): kelima file migration di-commit secara lokal di branch `feat/supabase-foundation`, yaitu empat migration pertama di C-2 (`d7b2432`) dan migration kelima di C-3 (`0a47e3d`), dan belum di-push ke GitHub. Commit tidak membuktikan migration berhasil diterapkan dari database kosong; uji itu belum dijalankan.
+> - Belum diimplementasikan:
+>   - Function bisnis selain `post_stock_movement`: material, kategori, koreksi, Stock Opname, `OPENING_BALANCE`, dan Catatan Owner.
+>   - File seed. Data demo lokal disiapkan melalui sesi SQL tepercaya dan `admin_provision_profile`.
+>   - Layanan orkestrasi admin permanen.
+>   - Perubahan maupun verifikasi project Supabase cloud.
 > - Dokumen ini menjelaskan desain, bukan artefak yang dapat dieksekusi. Ekspresi seperti `current_stock >= 0` atau `lower(name)` ditulis sebagai penjelasan aturan; SQL migration dibuat terpisah pada tahap implementasi.
 > - Label sumber mengikuti legenda di PRD kanonik. Pilihan teknis yang belum disetujui ditulis sebagai **rekomendasi** dalam teks biasa, tanpa label tambahan.
 
@@ -54,6 +67,7 @@ Database dirancang untuk mendukung proses utama aplikasi:
 | Pola keamanan function | Wrapper `SECURITY INVOKER` yang diekspos dan implementasi `SECURITY DEFINER` di schema privat | [KEPUTUSAN] ADR-09 |
 | Alat migration | Supabase CLI dengan Supabase lokal di Docker | [KEPUTUSAN] ADR-10 |
 | Akun dan profil | Provisioning manual oleh developer; public signup dinonaktifkan; offboarding tanpa menghapus profil | [KEPUTUSAN] ADR-11 |
+| Baseline keamanan database | Schema `public` diekspos dengan grant eksplisit dan RLS; schema internal `app_private`; default-deny; `anon` tanpa hak; penonaktifan akun lewat `profiles.deactivated_at` dan ban Supabase Auth | [KEPUTUSAN] ADR-13 |
 
 ## 1.2 Konvensi
 
@@ -239,6 +253,8 @@ Menggantikan tabel `users` pada versi sebelumnya. Kredensial (email dan password
 | id | uuid | NOT NULL | PK; FK → `auth.users.id`, ON DELETE RESTRICT | Identitas pengguna dari Supabase Auth |
 | name | text | NOT NULL | CHECK tidak kosong | Nama pengguna |
 | role | user_role | NOT NULL | — | `OWNER` atau `STAFF_WAREHOUSE` |
+| deactivated_at | timestamptz | NULL | — | Waktu akses akun dinonaktifkan; NULL berarti aktif (ADR-13 D9) |
+| session_valid_after | timestamptz | NULL | — | Hanya sesi Supabase Auth yang dibuat setelah waktu ini yang diterima. Diisi saat reaktivasi, dan menurut desain ADR-14 juga saat provisioning profil (§12.5.8). Diimplementasikan dan lulus uji integrasi lokal (§12.5, §14.5). Menurut kebijakan G1 (ADR-14, disetujui 1 November 2026) juga dimajukan pada perubahan role `APPLIED`; diimplementasikan di lokal melalui migration `20261101044858` dan lulus uji terarah (§12.5.6, §14.5 #40) |
 | created_at | timestamptz | NOT NULL | default now() | Waktu dibuat |
 | updated_at | timestamptz | NOT NULL | default now(); trigger | Waktu diperbarui |
 
@@ -246,9 +262,14 @@ Catatan:
 
 -   Kardinalitas: setiap profil merujuk tepat satu akun Supabase Auth (dijamin FK). Sebaliknya, sebuah akun Auth memiliki **nol atau satu** profil: FK tidak menjamin setiap akun memiliki profil. Akun tanpa profil tidak memiliki role, sehingga ditolak oleh RLS (§12) dan oleh pemeriksaan role di function (§7.1), termasuk dari Catatan Owner. [KEPUTUSAN] (PRD FR-AUTH-05)
 -   ON DELETE RESTRICT menjaga agar akun yang pernah menjadi pelaku tidak terhapus beserta jejak auditnya. Rekomendasi.
--   Akun dibuat developer melalui administrasi Supabase Auth, dan public signup dinonaktifkan. Baris profil beserta role disiapkan melalui prosedur admin terkontrol; tidak ada trigger otomatis pada `auth.users` untuk membuat profil. [KEPUTUSAN] (PRD FR-AUTH-02; ADR-11) Prosedur administrasi final belum ditetapkan.
+-   Akun dibuat developer melalui administrasi Supabase Auth, dan public signup dinonaktifkan. Baris profil beserta role disiapkan melalui prosedur admin terkontrol; tidak ada trigger otomatis pada `auth.users` untuk membuat profil. [KEPUTUSAN] (PRD FR-AUTH-02; ADR-11) Prosedur administrasi ditetapkan di ADR-14 (function `admin_provision_profile`, §12.5.8), lalu diimplementasikan dan diuji di lokal (1 November 2026). Profil pada uji integrasi awal (7SUP.4A-R2, 7SUP.4B-1) dibuat dengan SQL langsung sebagai `postgres`; uji berikutnya memakai `admin_provision_profile`.
 -   Pengguna tidak dapat menetapkan, mengubah, atau menaikkan `role` miliknya sendiri; role hanya diubah melalui proses admin terkontrol (§12). [KEPUTUSAN] (PRD FR-AUTH-05)
--   Offboarding menonaktifkan akses akun tanpa menghapus profil maupun histori audit. [KEPUTUSAN] (PRD FR-AUTH-04; ADR-11) Mekanisme teknis penonaktifan dan penanganan sesi aktif, termasuk perlu tidaknya penanda status di tabel ini, belum diputuskan. [OPEN DECISION OD-29]
+-   Offboarding menonaktifkan akses akun tanpa menghapus profil maupun histori audit. [KEPUTUSAN] (PRD FR-AUTH-04; ADR-11) Mekanisme teknis mengikuti ADR-13 (D9) [KEPUTUSAN]:
+    -   Penonaktifan mengisi `deactivated_at` dan memberlakukan ban di Supabase Auth melalui prosedur admin terkontrol.
+    -   Helper role (§12.1) tidak mengembalikan role untuk profil dengan `deactivated_at` terisi. Karena itu, RLS dan function privat menolak akses bisnis pada request berikutnya, tanpa menunggu access token kedaluwarsa.
+    -   Ban di Supabase Auth mencegah login baru dan pembaruan sesi, tetapi tidak mencabut access token yang sudah terbit.
+    -   Pengguna tidak dapat mengubah `deactivated_at` miliknya sendiri, karena `authenticated` tidak memiliki grant tulis pada `profiles` (§12.2).
+    -   Prosedur penonaktifan dan reaktivasi, validasi sesi, serta perlindungan OWNER aktif terakhir dirinci di §12.5. Penolakan berbasis `deactivated_at` dan validasi sesi sudah diimplementasikan dan lulus uji integrasi lokal. Prosedur admin dan perlindungan OWNER aktif terakhir didesain (ADR-14), lalu diimplementasikan dan lulus uji integrasi lokal (1 November 2026). [OPEN DECISION OD-29]
 
 ------------------------------------------------------------------------
 
@@ -478,6 +499,7 @@ Mencatat request mutasi agar pengiriman ulang tidak menggandakan perubahan stok.
 
 Aturan:
 
+-   Tabel ini berada di schema `app_private`, bukan di schema yang diekspos Data API. Tabel tidak memiliki grant untuk `anon` maupun `authenticated`, dan hanya diakses implementasi `SECURITY DEFINER` (§7.1). RLS tetap diaktifkan. [KEPUTUSAN] (ADR-13 D6)
 -   Key unik per pengguna melalui primary key `(user_id, key)`. [KEPUTUSAN] (Keputusan E)
 -   Tidak ada kedaluwarsa atau penghapusan otomatis sebelum kebijakan retensi disetujui. [KEPUTUSAN] (Keputusan E)
 -   Mekanisme lengkap dijelaskan di §9.
@@ -549,6 +571,42 @@ Aturan lain:
 -   Jumlah pada ringkasan sidebar dihitung dari seluruh baris yang memenuhi kriteria, bukan dari 3 catatan yang tampil di panel. [KEPUTUSAN] (FR-NOTE-20)
 -   Semua FK pelaku ke `profiles` memakai ON DELETE RESTRICT, konsisten dengan §5. Rekomendasi.
 -   Hak menulis Catatan Owner tidak memberi Owner hak apa pun pada tabel maupun function inventori (§7.1, §12.2). [KEPUTUSAN] (FR-NOTE-11)
+
+------------------------------------------------------------------------
+
+## 4.11 account_lifecycle_events (schema `app_private`)
+
+Jejak audit perubahan status dan role akun yang dilakukan function admin (§12.5.8). [KEPUTUSAN] (STACK-DECISION-LOG ADR-14, J1) **Diimplementasikan di lokal** (migration `20261031163955_account_lifecycle_admin.sql`). Pencatatan atomik, korelasi `operation_id`, dan penolakan `UPDATE`, `DELETE`, serta `TRUNCATE` (`55000 APPEND_ONLY`) lulus uji lokal (§14.5 #26). Event dari uji lokal dipertahankan (J11).
+
+| Field | Type | Null | Constraint | Description |
+|---|---|---|---|---|
+| id | bigint | NOT NULL | PK; identity | Urutan event |
+| operation_id | uuid | NOT NULL | UNIQUE | ID operasi siklus akun dari operator (§12.5.9). Satu operasi menghasilkan tepat satu event |
+| request_fingerprint | text | NOT NULL | CHECK tepat 64 karakter heksadesimal huruf kecil (`^[0-9a-f]{64}$`) | SHA-256 dari input material operasi yang sudah divalidasi dan dinormalisasi (§12.5.9). Dipakai untuk membedakan pengulangan identik dari input yang berbeda |
+| occurred_at | timestamptz | NOT NULL | default `clock_timestamp()` | Waktu event ditulis |
+| action | text | NOT NULL | CHECK salah satu dari `PROVISION`, `DEACTIVATE`, `REACTIVATE`, `SET_ROLE` | Jenis operasi |
+| outcome | text | NOT NULL | CHECK `APPLIED` atau `NOOP` | `APPLIED` bila data berubah; `NOOP` bila operasi idempoten tidak mengubah apa pun |
+| target_user_id | uuid | NOT NULL | Tanpa FK | Akun target. Tanpa FK agar histori tetap ada setelah akun uji dihapus (J11) |
+| actor | text | NOT NULL | CHECK tidak kosong; panjang terbatas | Nama operator. **Dinyatakan sendiri** oleh operator, bukan identitas yang diautentikasi |
+| reason | text | NOT NULL | CHECK tidak kosong; panjang terbatas | Alasan tindakan. Tidak boleh memuat secret maupun data pribadi yang tidak perlu |
+| old_role, new_role | user_role | NULL | — | Role sebelum dan sesudah |
+| old_deactivated_at, new_deactivated_at | timestamptz | NULL | — | Status nonaktif sebelum dan sesudah |
+| old_session_valid_after, new_session_valid_after | timestamptz | NULL | — | Batas sesi sebelum dan sesudah |
+| db_session_user | text | NOT NULL | default `session_user` | Role login sesi database yang menjalankan function |
+
+Aturan:
+
+-   Tabel berada di `app_private`. RLS diaktifkan tanpa policy. Tidak ada hak bagi `PUBLIC`, `anon`, `authenticated`, maupun `service_role` pada tabel dan sequence identity-nya. [KEPUTUSAN] (ADR-14 J1, J3)
+-   Baris hanya ditulis function admin, dalam transaksi yang sama dengan perubahan `profiles`. Bila transaksi gagal, perubahan profil maupun event sama-sama batal.
+-   Event `NOOP` ditulis untuk penonaktifan, reaktivasi, dan perubahan role yang idempoten (misalnya penonaktifan akun yang sudah nonaktif), agar setiap `operation_id` memiliki jejak.
+-   Sejak migration `20261101044858` (G1), event `SET_ROLE` dengan outcome `APPLIED` mencatat `old_session_valid_after` dan `new_session_valid_after` yang berbeda. Event `NOOP` mencatat nilai yang sama. Terverifikasi di lokal (7SUP.4B-3I, §14.5 #40).
+-   `request_fingerprint` dihitung oleh function admin dari input kanonik (§12.5.9), tidak dikirim operator. Pengulangan dengan `operation_id` yang sama hanya dianggap identik bila fingerprint-nya sama. Fingerprint bukan perlindungan kerahasiaan: email dan input lain berentropi rendah dapat ditebak dengan mencoba kandidat. Nilai `actor` dan `reason` tetap tersimpan sebagai teks biasa.
+-   Penolakan (error `P0001`, §12.5.8) dan error infrastruktur membatalkan transaksi, sehingga **tidak tercatat** di tabel ini. Penolakan dicatat di runbook operator.
+-   Langkah Supabase Auth (ban, pencabutan ban, pembuatan akun) tidak tercatat di tabel ini. Langkah tersebut dicatat di runbook dan `auth.audit_log_entries`, dan dihubungkan melalui `operation_id` di runbook.
+-   Append-only: trigger menolak `UPDATE`, `DELETE`, dan `TRUNCATE`. Proteksi ini **dapat dilewati** pemilik tabel (`postgres`) maupun superuser, misalnya dengan menonaktifkan atau menghapus trigger. Tabel ini bukan bukti anti-manipulasi terhadap pemegang hak tersebut.
+-   Indeks: unique `operation_id`; (`target_user_id`, `id`) untuk mencari event terbaru per akun. Rekomendasi.
+-   Tidak ada penghapusan atau retensi otomatis. Event dari uji integrasi lokal dipertahankan dan tidak dihapus hanya untuk mengembalikan jumlah baris ke nol. [KEPUTUSAN] (ADR-14 J11)
+-   Tabel ini tidak menggantikan runbook maupun log audit Auth.
 
 ------------------------------------------------------------------------
 
@@ -640,7 +698,7 @@ Status ditentukan dari `current_stock` dan `minimum_stock` [KEPUTUSAN] (PRD FR-S
 | `LOW_STOCK` | `current_stock > 0` dan `current_stock <= minimum_stock` |
 | `NORMAL` | `current_stock > minimum_stock` |
 
--   Status dihitung dari data saat dibaca dan tidak disimpan sebagai kolom, agar tidak pernah basi. [DITURUNKAN] (PRD FR-STS-02) Penyediaannya melalui view baca. Rekomendasi. Keamanan view: lihat §12.4.
+-   Status dihitung dari data saat dibaca dan tidak disimpan sebagai kolom, agar tidak pernah basi. [DITURUNKAN] (PRD FR-STS-02) Penyediaannya melalui view baca. Rekomendasi. View tersebut memakai `security_invoker = true` sehingga RLS tabel `materials` berlaku bagi pemanggil. [KEPUTUSAN] (ADR-13 D5)
 -   Status lama "Aman / Perlu Perhatian / Prioritas Restock" digantikan oleh tiga status di atas.
 -   Status operasional terpisah dari klasifikasi AI (§8). [KEPUTUSAN]
 
@@ -703,7 +761,7 @@ Setiap function mutasi:
 4.  Menjalankan seluruh perubahan dalam satu transaksi; error apa pun membatalkan seluruh perubahan.
 5.  Mengembalikan kode error bisnis yang dapat dipetakan Route Handler ke respons HTTP.
 
-Pola keamanan function mengikuti ADR-09 [KEPUTUSAN]: wrapper `SECURITY INVOKER` di schema yang diekspos memanggil implementasi `SECURITY DEFINER` di schema privat, dan implementasi privat menjalankan pemeriksaan butir 1–5. Nama function di §7.2 merujuk operasi; setiap operasi diwujudkan sebagai pasangan wrapper dan implementasi privat. Persyaratan keamanan: §12.3. Rincian grant dan schema: rekomendasi di §12.4.
+Pola keamanan function mengikuti ADR-09 [KEPUTUSAN]: wrapper `SECURITY INVOKER` di schema yang diekspos memanggil implementasi `SECURITY DEFINER` di schema privat, dan implementasi privat menjalankan pemeriksaan butir 1–5. Nama function di §7.2 merujuk operasi; setiap operasi diwujudkan sebagai pasangan wrapper dan implementasi privat. Wrapper berada di schema `public` dan implementasi privat di schema `app_private` (ADR-13 D1, D2). Persyaratan keamanan: §12.3. Grant dan schema: §12.4.
 
 ## 7.2 Daftar Function
 
@@ -941,23 +999,38 @@ Kewajiban otorisasi di server **dan** database adalah [KEPUTUSAN] (PRD FR-AUTH-0
 ## 12.1 Prinsip
 
 -   Supabase API dapat diakses langsung dengan anon/publishable key yang ikut ke browser. Karena itu RLS aktif di **semua** tabel aplikasi. Operasi tulis dari aplikasi melewati Route Handlers (ADR-05), sedangkan pola baca server-side mengikuti OD-18. Function di schema yang diekspos tetap dapat dipanggil langsung tanpa Route Handler, sehingga penegakan wajib berada di database (ADR-09).
--   Route Handlers memakai Supabase client dengan sesi pengguna, sehingga `auth.uid()` dan RLS berlaku pada setiap query (ADR-06; OD-18 tidak mengubah prinsip ini).
+-   Route Handlers memakai Supabase client dengan sesi pengguna, sehingga `auth.uid()` dan RLS berlaku pada setiap query (ADR-06). OD-18 diputuskan dengan Pilihan C (STACK-DECISION-LOG ADR-15): pembacaan data bisnis juga melalui Route Handler, dan browser tidak memanggil Supabase langsung.
 -   Service role key melewati RLS dan hanya dipakai di server untuk seed atau administrasi, tidak pernah untuk request pengguna.
--   Policy RLS dan function membutuhkan role pengguna dari `profiles`. [DITURUNKAN dari PRD FR-AUTH-03] Rekomendasi: role dibaca melalui helper function baca (`STABLE`, `SECURITY DEFINER`) agar policy tidak merujuk dirinya sendiri secara berulang; helper tanpa parameter dan hanya mengembalikan role pemanggil berdasarkan `auth.uid()`. Apabila helper diimplementasikan sebagai `SECURITY DEFINER`, penempatannya di schema yang tidak diekspos direkomendasikan sebagai mitigasi keamanan. Rekomendasi ini konsisten dengan prinsip ADR-09, tetapi bukan konsekuensi wajib ADR-09 untuk setiap helper. Mekanisme helper, pemilik function, `USAGE`, `EXECUTE`, serta RLS dan grant final masih memerlukan desain dan pengujian.
+-   Policy RLS dan function membutuhkan role pengguna dari `profiles`. [DITURUNKAN dari PRD FR-AUTH-03]
+    -   Role dibaca melalui helper function `SECURITY DEFINER` di schema `app_private`, dengan `search_path` kosong dan nama objek ditulis lengkap dengan schema. [KEPUTUSAN] (ADR-13 D2, D8)
+    -   Helper tidak berparameter dan hanya mengembalikan role pemanggil berdasarkan `auth.uid()`. Helper mengembalikan NULL bila pemanggil tidak memiliki profil atau profilnya dinonaktifkan (`deactivated_at` terisi). [KEPUTUSAN] (ADR-13 D9)
+    -   Role hanya dibaca dari `profiles.role`. Helper tidak memakai `user_metadata` maupun `app_metadata` dari JWT atau dari `auth.users`, karena data tersebut tidak menjadi sumber otorisasi. [KEPUTUSAN] (ADR-13, amandemen OD-29)
+    -   Helper juga memvalidasi sesi Supabase Auth pemanggil (§12.5). Mekanisme ini diimplementasikan dan lulus uji integrasi lokal. Uji wajib diulang setiap peningkatan versi Supabase (§14.5 #18).
+    -   `authenticated` mendapat `USAGE` pada `app_private` dan `EXECUTE` pada helper ini, karena policy RLS menjalankannya dengan hak pemanggil. [KEPUTUSAN] (ADR-13 D8)
+    -   Rekomendasi: helper ditandai `STABLE` dan dipanggil di policy dalam bentuk subquery `(SELECT …)`, agar dievaluasi sekali per query.
+    -   Nama helper, pemilik function, serta policy final ditetapkan di migration dan diuji (§14.4). Di lokal: helper `app_private.current_app_role()` milik `postgres` (`STABLE`, `SECURITY DEFINER`, `search_path` kosong), dipakai oleh policy `profiles_select_own_active` (migration `20261031084100_profiles_authz_foundation.sql`).
 -   Akun dan profil disiapkan developer (ADR-11). Pengguna tanpa profil valid tidak lolos pemeriksaan role sehingga ditolak dari seluruh fitur bisnis, termasuk Catatan Owner. [KEPUTUSAN] (PRD FR-AUTH-05)
 
 ## 12.2 Matriks Akses Tabel
 
+Keputusan yang berlaku untuk seluruh matriks (ADR-13) [KEPUTUSAN]:
+
+-   "Pengguna ber-profil" berarti pengguna `authenticated` yang memiliki profil aktif, yaitu `deactivated_at` NULL (D9).
+-   `anon` tidak memiliki hak pada tabel, view, sequence, maupun function aplikasi (D7).
+-   Setiap hak pada tabel diberikan dengan `GRANT` eksplisit di file migration yang sama dengan pembuatan tabel dan RLS-nya (D3, D4).
+-   `service_role` tidak memperoleh hak otomatis; grant untuk `service_role` hanya diberikan bila kebutuhan administrasinya terdokumentasi (D3).
+
 | Tabel | SELECT | INSERT / UPDATE / DELETE langsung |
 |---|---|---|
-| profiles | Kebutuhan: aplikasi dapat memperoleh profil dan role pengguna yang sedang login untuk memeriksa otorisasi [DITURUNKAN dari PRD FR-AUTH-05]. Mekanisme penyediaannya, yaitu RLS SELECT atas profil sendiri, function terkontrol, atau jalur server yang aman, belum ditetapkan dan menjadi keputusan implementasi. Profil pengguna lain, termasuk nama pelaku di histori dan Catatan Owner: [OPEN DECISION OD-28] | Tidak ada; `role` hanya diubah melalui proses admin terkontrol (ADR-11) |
+| profiles | Kebutuhan: aplikasi dapat memperoleh profil dan role pengguna yang sedang login untuk memeriksa otorisasi [DITURUNKAN dari PRD FR-AUTH-05]. Mekanisme penyediaannya, yaitu RLS SELECT atas profil sendiri, function terkontrol, atau jalur server yang aman, menjadi keputusan implementasi. Implementasi lokal saat ini: `GRANT SELECT` untuk `authenticated` dan policy `profiles_select_own_active`, yang hanya mengembalikan baris milik pemanggil bila helper role tidak NULL; lulus uji integrasi lokal. Profil pengguna lain, termasuk nama pelaku di histori dan Catatan Owner: [OPEN DECISION OD-28] | Tidak ada; `role`, `deactivated_at`, dan `session_valid_after` hanya diubah melalui function admin (ADR-11, ADR-13, ADR-14; §12.5.8) |
 | categories | Pengguna ber-profil | `STAFF_WAREHOUSE` (hapus dibatasi FK RESTRICT); berubah menjadi "hanya function" jika normalisasi nama Opsi 3 disetujui (§4.2) |
 | materials | Pengguna ber-profil | DELETE untuk `STAFF_WAREHOUSE` (dibatasi FK RESTRICT); create/update/arsip/reaktivasi hanya melalui function |
 | material_status_events | Pengguna ber-profil | Tidak ada (hanya function) |
 | inventory_transactions | Pengguna ber-profil | Tidak ada (hanya function); UPDATE/DELETE tidak pernah diizinkan |
 | stock_opname | Pengguna ber-profil | Tidak ada (hanya function) |
 | stock_opname_items | Pengguna ber-profil | Tidak ada (hanya function) |
-| idempotency_requests | Tidak ada | Tidak ada (hanya function) |
+| idempotency_requests (schema `app_private`) | Tidak ada | Tidak ada (hanya function) |
+| account_lifecycle_events (schema `app_private`, §4.11) | Tidak ada | Tidak ada. INSERT hanya oleh function admin yang dijalankan `postgres`; UPDATE, DELETE, dan TRUNCATE ditolak trigger append-only (ADR-14) |
 | Catatan Owner (§4.10) | Pengguna ber-profil; akses Staff Warehouse ke catatan di luar daftar aktif mengikuti [OPEN DECISION OD-27]; catatan terhapus mengikuti [OPEN DECISION OD-25] | Tidak ada (hanya function, §7.2) |
 
 ## 12.3 Function
@@ -968,28 +1041,419 @@ Pola keamanan function mengikuti ADR-09 [KEPUTUSAN]:
 -   Implementasi privat memeriksa `auth.uid()` tidak kosong, role dari `profiles`, kepemilikan resource bila relevan, dan seluruh invariant bisnis. Wrapper bukan satu-satunya pengendali keamanan.
 -   Pemanggilan RPC langsung tanpa Route Handler tunduk pada pemeriksaan yang sama. Pemeriksaan role di Route Handler tetap dilakukan untuk pesan error yang jelas; pemeriksaan di function privat adalah penegakan yang tidak dapat dilewati.
 
-Persyaratan yang wajib diverifikasi saat implementasi (ADR-09); rinciannya belum ditetapkan:
+Persyaratan yang wajib diverifikasi saat implementasi (ADR-09, ADR-13):
 
--   Hak `USAGE` pada schema dan `EXECUTE` pada function diberikan seminimal mungkin, dengan memperhitungkan hak `EXECUTE` default untuk `PUBLIC` pada function baru.
--   Pemilik setiap function dan hak efektifnya didokumentasikan. Function `SECURITY DEFINER` melewati RLS bila pemiliknya superuser, memiliki atribut `BYPASSRLS`, atau merupakan pemilik tabel yang tidak memakai `FORCE ROW LEVEL SECURITY`. Menurut dokumentasi Supabase, function yang dibuat melalui migration dimiliki `postgres` sehingga dalam praktik melewati RLS (STACK-DECISION-LOG ADR-09); karena itu pemeriksaan di dalam function wajib.
--   `search_path` setiap function `SECURITY DEFINER` ditetapkan aman (rekomendasi: kosong), dan objek dirujuk dengan nama schema lengkap.
+-   Hak `USAGE` pada schema dan `EXECUTE` pada function diberikan seminimal mungkin dan per function, tanpa grant menyeluruh untuk seluruh function dalam schema. Hak `EXECUTE` default untuk `PUBLIC` pada function baru ditangani melalui default-deny (§12.4).
+-   Wrapper di `public`: `EXECUTE` hanya untuk `authenticated`, dan dicabut dari `PUBLIC` serta `anon`. Karena wrapper berjalan dengan hak pemanggil, `authenticated` membutuhkan `USAGE` pada `app_private` dan `EXECUTE` pada implementasi yang dipanggil wrapper tersebut saja. [KEPUTUSAN] (ADR-13 D8)
+-   Pemilik setiap function dan hak efektifnya didokumentasikan. Function `SECURITY DEFINER` melewati RLS bila pemiliknya superuser, memiliki atribut `BYPASSRLS`, atau merupakan pemilik tabel yang tidak memakai `FORCE ROW LEVEL SECURITY`. Menurut dokumentasi Supabase, function yang dibuat melalui migration dimiliki `postgres` sehingga dalam praktik melewati RLS (STACK-DECISION-LOG ADR-09). Audit lokal 31 Oktober 2026 mengonfirmasi bahwa Supabase CLI menjalankan migration sebagai `postgres`, yang di lokal bukan superuser tetapi memiliki atribut `BYPASSRLS` (ADR-13). Karena itu pemeriksaan di dalam function wajib.
+-   `search_path` setiap function `SECURITY DEFINER` kosong, dan objek dirujuk dengan nama schema lengkap. [KEPUTUSAN] (ADR-13 D8)
 -   Schema privat tidak dianggap aman hanya karena tidak diekspos; hak atas schema tersebut tetap dibatasi dan diuji.
 -   Pemanggilan RPC langsung diuji (§14.4).
 
-## 12.4 Rekomendasi Keamanan yang Belum Disetujui
+Function admin siklus akun (§12.5.8) **bukan** bagian dari pola RPC di atas. Function tersebut tidak dipanggil melalui Data API, memakai `SECURITY INVOKER`, dan tidak memiliki `GRANT EXECUTE` kepada role mana pun selain pemiliknya, `postgres`. [KEPUTUSAN] (ADR-14 J3)
 
-Rekomendasi berikut berasal dari audit keamanan fondasi backend (30 Oktober 2026) dan **belum disetujui**. Dicatat agar diputuskan sebelum migration pertama.
+## 12.4 Keputusan Keamanan Database (ADR-13)
 
-| Rekomendasi | Alasan | Bagian terdampak |
-|---|---|---|
-| Mencabut default privileges tabel, sequence, dan function baru di `public` dari `anon` dan `authenticated`, serta hak `EXECUTE` default untuk `PUBLIC`, sebelum tabel pertama dibuat | Objek baru di `public` otomatis mendapat grant sehingga dapat dijangkau Data API | §14.2 (langkah awal) |
-| Mengaktifkan RLS dan mengatur grant di file migration yang sama dengan pembuatan tabel atau function | Mencegah tabel terbuka bila migration diterapkan bertahap | §14.2 langkah 7 |
-| View status stok memakai `security_invoker = true` | View secara default berjalan dengan hak pemiliknya dan dapat melewati RLS tabel dasarnya | §6.1, §14.2 langkah 8 |
-| Memilih schema yang diekspos: `public` atau schema `api` khusus | Schema `api` mempersempit permukaan API, tetapi menambah pekerjaan | Penempatan wrapper dan view |
-| Menempatkan `idempotency_requests` di schema privat | Tabel ini tidak pernah dibaca langsung oleh pengguna | §4.8, §12.2 |
-| `anon` tidak memiliki hak apa pun pada tabel dan function aplikasi | Login ditangani Supabase Auth, bukan Data API | §12.2 |
-| Membatasi kolom yang dapat ditulis langsung pada `categories`, bila tulis langsung dipertahankan | Mencegah perubahan `id` atau kolom waktu | §12.2; terkait OD-19 |
-| Memberikan `USAGE` pada schema privat dan `EXECUTE` pada helper role kepada `authenticated` | Policy RLS memanggil helper dengan hak pengguna. Penempatan helper `SECURITY DEFINER` di schema yang tidak diekspos juga merupakan rekomendasi bersyarat (§12.1), bukan konsekuensi wajib ADR-09 | §12.1 |
+Rekomendasi keamanan dari audit fondasi backend (30 Oktober 2026) diputuskan pada 31 Oktober 2026 melalui STACK-DECISION-LOG ADR-13, kecuali pembatasan kolom `categories`. Default-deny (D3), schema `app_private` beserta haknya (D2, D8), serta RLS, policy, dan grant `profiles` (D4, D7) sudah diterapkan dan diverifikasi di Supabase lokal melalui `pg_default_acl` dan katalog. Keputusan untuk view (D5), `idempotency_requests` (D6), dan tabel bisnis belum diimplementasikan; SQL-nya disusun dan diverifikasi saat migration terkait dibuat.
+
+| Rekomendasi awal | Status | Ketentuan | Bagian terdampak |
+|---|---|---|---|
+| Mencabut default privileges tabel, sequence, dan function baru di `public`, serta hak `EXECUTE` default untuk `PUBLIC`, sebelum tabel pertama dibuat | **Diputuskan** (D3) | Default-deny bagi `anon`, `authenticated`, dan `service_role` untuk objek yang dibuat role migration (`postgres`). Hak `EXECUTE` default untuk `PUBLIC` berlaku global, sehingga pencabutannya tidak memakai klausa `IN SCHEMA`. SQL final mengikuti hasil audit default ACL (ADR-13) dan diverifikasi melalui `pg_default_acl` | §14.2 langkah 0 |
+| Mengaktifkan RLS dan mengatur grant di file migration yang sama dengan pembuatan tabel atau function | **Diputuskan** (D4) | Tabel, RLS, policy, dan `GRANT` dalam satu file migration | §14.1, §14.2 |
+| View status stok memakai `security_invoker = true` | **Diputuskan** (D5) | — | §6.1 |
+| Memilih schema yang diekspos: `public` atau schema `api` khusus | **Diputuskan** (D1, D2) | `public` diekspos; `app_private` untuk implementasi `SECURITY DEFINER`, helper role, dan tabel internal | §7.1, §12.3 |
+| Menempatkan `idempotency_requests` di schema privat | **Diputuskan** (D6) | Di `app_private`, tanpa grant kepada `anon` maupun `authenticated` | §4.8, §12.2 |
+| `anon` tidak memiliki hak apa pun pada tabel dan function aplikasi | **Diputuskan** (D7) | Berlaku untuk tabel, view, sequence, dan function aplikasi. `USAGE` pada schema `public` tidak diubah | §12.2 |
+| Membatasi kolom yang dapat ditulis langsung pada `categories`, bila tulis langsung dipertahankan | **Belum diputuskan**; mengikuti [OPEN DECISION OD-19] | Tidak termasuk ADR-13. Jika OD-19 memilih Opsi 3, seluruh penulisan kategori melalui function dan rekomendasi ini tidak diperlukan | §4.2, §12.2 |
+| Memberikan `USAGE` pada schema privat dan `EXECUTE` pada helper role kepada `authenticated` | **Diputuskan** (D8) | `USAGE` pada `app_private`; `EXECUTE` per function hanya pada helper dan implementasi yang dipanggil wrapper. Tidak ada grant menyeluruh | §12.1, §12.3 |
+
+Penonaktifan akun (D9) dirinci di §4.1.
+
+Status ini belum terverifikasi di project cloud. Default ACL, ekstensi, dan pengaturan RLS otomatis di project cloud diaudit sebelum migration pertama diterapkan ke remote (ADR-13).
+
+## 12.5 Penonaktifan Akun, Reaktivasi, dan Validasi Sesi (OD-29)
+
+Bagian ini merinci ADR-13 D9 beserta amandemennya (STACK-DECISION-LOG ADR-13, "Amandemen 31 Oktober 2026 — OD-29") dan prosedur admin ADR-14. Status setiap bagian, per 1 November 2026; semua uji dijalankan di Supabase **lokal** saja:
+
+| Bagian | Status |
+|---|---|
+| Kolom `deactivated_at` dan `session_valid_after`, helper role fail-closed, dan validasi sesi (§12.5.2, §12.5.3) | **Diimplementasikan di lokal**; lulus uji integrasi lokal untuk jalur `profiles` (§14.5) |
+| Penolakan akses setelah penonaktifan, keadaan ban dan pencabutan ban, cutoff sesi lama setelah reaktivasi, refresh token lama, dan logout | **Lulus uji integrasi lokal**. Semula dengan SQL langsung sebagai `postgres` (7SUP.4B-1), kemudian melalui function admin (7SUP.4B-3A, 7SUP.4B-3B-R2) |
+| Function admin, tabel audit, dan perlindungan OWNER aktif terakhir (§4.11, §12.5.7–§12.5.10) | **Diimplementasikan di lokal** (migration `20261031163955_account_lifecycle_admin.sql`) dan lulus uji integrasi lokal, termasuk dua transaksi bersamaan (§14.5) |
+| Runbook lintas sistem dan state perantara (§12.5.5, §12.5.6) | **Diuji di lokal** dengan ban dan pencabutan ban nyata, kegagalan Auth yang terkendali (request tidak valid), dan reaktivasi database yang ditolak terkendali. Pemulihan dari gangguan jaringan atau proses yang nyata **belum diuji**. Runbook manual satu operator disetujui sebagai kebijakan pada 1 November 2026 (STACK-DECISION-LOG ADR-14, G3; §12.5.7): **APPROVED — MANUAL OPERATIONAL POLICY**, bukan penegakan lintas sistem otomatis |
+| Durasi ban administratif `876000h` (§12.5.5) | **APPROVED — MANUAL OPERATIONAL POLICY** untuk MVP lokal (ADR-14, G2); kebijakan produksi **DEFERRED TO PRODUCTION** |
+| Sesi lama kehilangan otorisasi setelah perubahan role `APPLIED` (§12.5.6) | **APPROVED — IMPLEMENTED AND TARGETED-TESTED LOCALLY** (ADR-14, G1): migration `20261101044858_admin_role_change_session_cutoff.sql` diterapkan di lokal dan lulus uji terarah (§14.5 #40, 7SUP.4B-3I). Semula **APPROVED — NOT IMPLEMENTED** |
+| Batas eksposur Data API dan penjaga konteks tepercaya | **Diuji di lokal** (§14.5 #19, #20) |
+| Otorisasi tabel bisnis, view, dan RPC | **Diimplementasikan di lokal** untuk tabel inventori, view `material_stock_status`, dan `post_stock_movement` (migration `20261101064015`, ADR-15 B5.3). Lulus uji database, termasuk penolakan akun nonaktif dan cutoff G1 dengan klaim sesi asli dalam transaksi ROLLBACK (7SUP.5A-2). Penolakan dengan perubahan status yang di-commit melalui Data API atau API Next.js belum diuji |
+| Project Supabase cloud | Belum diubah maupun diverifikasi |
+
+### 12.5.1 Fakta Supabase Auth yang Menjadi Dasar
+
+Awalnya diverifikasi dari source Supabase Auth (GoTrue) v2.197.0, yaitu versi container Auth lokal, dan dari katalog database lokal pada 31 Oktober 2026. Butir bertanda **[uji lokal]** kemudian dikonfirmasi dengan request nyata ke Supabase Auth lokal. Butir lain masih berdasarkan source atau katalog saja.
+
+-   Ban admin (`PUT /admin/users/{user_id}` dengan `ban_duration`) hanya mengisi `auth.users.banned_until`. Ban tidak menghapus sesi maupun refresh token. **[uji lokal]**
+-   Selama ban aktif, login dengan password dan refresh token ditolak dengan HTTP 400 `user_banned`. **[uji lokal]**
+-   `ban_duration` memakai format durasi Go, misalnya `876000h`; nilai `none` mencabut ban. **[uji lokal]**
+-   Access token yang sudah terbit tetap valid sampai kedaluwarsa. PostgREST memeriksa tanda tangan JWT, bukan status ban.
+-   Refresh token memakai ulang sesi yang sama: `session_id` tetap, sedangkan `iat` baru. Setelah ban dicabut, refresh token lama dapat menghidupkan kembali sesi lama; uji lokal menunjukkan refresh tersebut berhasil (HTTP 200), tetapi akses bisnis tetap ditolak database. **[uji lokal]**
+-   Logout dengan `scope=local` menghapus baris sesi yang bersangkutan dari `auth.sessions` tanpa menghapus sesi lain milik pengguna yang sama. **[uji lokal]**
+-   Tidak ada endpoint admin untuk mengakhiri sesi pengguna berdasarkan `user_id`. Endpoint yang menghapus sesi hanya penghapusan pengguna, yang di luar scope (ADR-11).
+-   Access token pengguna memuat klaim `session_id`. **[uji lokal]**
+-   `auth.sessions` memiliki kolom `id`, `user_id`, `created_at` (nullable), dan `not_after`, serta indeks `(user_id, created_at)`. Role `postgres` dapat membacanya; `authenticated` tidak.
+-   Perubahan admin dicatat di `auth.audit_log_entries`, bila log audit Auth aktif. Di lokal, ban dan pencabutan ban sama-sama tercatat sebagai `user_modified`, tanpa durasi ban, alasan, maupun identitas operator manusia. Log ini tidak mencatat perubahan PostgreSQL. **[uji lokal]**
+
+### 12.5.2 Model Otorisasi Fail-Closed
+
+Helper role di `app_private` (§12.1) mengembalikan role pemanggil hanya bila **semua** syarat berikut terpenuhi. Bila satu saja gagal, helper mengembalikan NULL; pemeriksaan role di policy RLS dan function privat lalu menolak.
+
+1.  `auth.uid()` tidak NULL.
+2.  Profil untuk `auth.uid()` ada, dan `deactivated_at` NULL.
+3.  Validasi sesi (semula usulan; diimplementasikan dan lulus uji integrasi lokal):
+    -   Klaim `session_id` ada dan berformat UUID valid. Klaim yang hilang atau rusak ditolak tanpa melempar error yang tidak tertangani.
+    -   Baris `auth.sessions` dengan `id` tersebut ada dan `user_id`-nya sama dengan `auth.uid()`.
+    -   `created_at` sesi tidak NULL.
+    -   `not_after` NULL atau lebih besar dari waktu sekarang.
+    -   Bila `profiles.session_valid_after` terisi, `created_at` sesi harus lebih besar dari nilai tersebut.
+4.  Role dibaca dari `profiles.role`, bukan dari metadata JWT.
+
+Ketentuan lain:
+
+-   Setiap policy RLS pada tabel bisnis memanggil helper ini, termasuk tabel yang dibaca melalui view `security_invoker`.
+-   Setiap implementasi `SECURITY DEFINER` memanggil helper yang sama, lalu memeriksa role yang dibutuhkan dan invariant bisnis secara mandiri. Pemanggilan RPC langsung tanpa Route Handler tunduk pada pemeriksaan yang sama.
+-   Route Handler untuk request pengguna memakai Supabase client dengan sesi pengguna. Secret key atau `service_role` tidak pernah dipakai untuk request pengguna biasa.
+-   **Batas waktu berlaku:**
+    -   Penolakan berlaku untuk setiap statement yang dimulai setelah transaksi penonaktifan commit, karena pada `READ COMMITTED` setiap statement membaca snapshot baru.
+    -   Transaksi yang sudah berjalan dan sudah lolos pemeriksaan sebelum commit tersebut dapat selesai.
+    -   Pembatalan surut terhadap transaksi yang sedang berjalan tidak dijanjikan.
+
+### 12.5.3 Validasi Sesi: Perbandingan Opsi
+
+| Opsi | Cara | Masalah utama | Keputusan |
+|---|---|---|---|
+| A. Hanya `deactivated_at` dan ban Auth | Status database ditambah ban | Setelah reaktivasi dan pencabutan ban, refresh token lama menghidupkan sesi lama dan memperoleh akses bisnis lagi (risiko R3) | Tidak cukup |
+| B. Batas waktu dibandingkan dengan `iat` JWT | `iat` harus lebih besar dari batas | Refresh setelah ban dicabut menerbitkan `iat` baru untuk sesi lama, sehingga sesi lama lolos | Ditolak |
+| C. Batas waktu dibandingkan dengan `created_at` sesi dari `auth.sessions` melalui klaim `session_id` | Hanya sesi yang dibuat setelah reaktivasi yang diterima | Bergantung pada struktur internal schema `auth` yang dapat berubah antar versi; ada potensi selisih jam antara Auth dan database | **Dipilih**. Diimplementasikan dan lulus uji integrasi lokal; wajib diuji ulang setiap peningkatan versi |
+| D. Mengakhiri sesi melalui operasi admin resmi | — | Tidak tersedia endpoint admin untuk mengakhiri sesi berdasarkan `user_id` di Auth v2.197.0. Client Supabase belum terpasang di proyek ini sehingga kemampuannya belum diverifikasi | Tidak dipakai |
+| E. Hibrida | — | — | C dipadukan dengan `deactivated_at` dan ban Auth (D9) |
+
+Risiko opsi C dan mitigasinya:
+
+-   **Selisih jam:** `auth.sessions.created_at` diisi oleh layanan Auth, sedangkan `session_valid_after` diisi jam database.
+    -   Bila jam Auth tertinggal, login yang terjadi sesaat setelah reaktivasi dapat ditolak. Ini fail-closed; pengguna cukup login ulang.
+    -   Bila jam Auth lebih cepat, hanya sesi yang dibuat dalam selisih tersebut setelah ban dicabut yang dapat lolos. Sesi itu dibuat oleh pemilik akun yang sedang direaktivasi.
+-   **Perubahan versi Supabase Auth:** setiap peningkatan versi CLI atau Auth wajib mengulang uji §14.5. Bila kolom atau klaim yang dibutuhkan tidak tersedia, helper menolak (fail-closed).
+-   **Sesi yang dihapus** (logout atau penghentian sesi oleh Auth): helper menolak access token yang masih berlaku. Ini menutup celah token setelah logout. Untuk logout `scope=local`, perilaku ini lulus uji integrasi lokal.
+-   **Sesi lama tetap dapat di-refresh di Supabase Auth** setelah ban dicabut. Satu-satunya penghalang akses bisnisnya adalah pemeriksaan `session_valid_after` di helper. Karena itu setiap policy dan function bisnis wajib memakai helper ini (§12.5.2); satu policy yang melewatkannya membuka kembali akses sesi lama.
+-   **Respons penolakan:** untuk akun nonaktif, SELECT `profiles` melalui Data API menghasilkan HTTP 200 dengan nol baris, bukan 401 atau 403. Aplikasi wajib memperlakukan "profil tidak terbaca" sebagai tidak berwenang.
+-   **Hak baca `auth.sessions`:** hanya helper `SECURITY DEFINER` milik `postgres` yang membaca metadata sesi. Helper membaca kolom `id`, `user_id`, `created_at`, dan `not_after` saja, tidak membaca refresh token. `authenticated` tidak diberi hak pada `auth.sessions`.
+-   `auth.sessions` tidak diubah maupun dihapus secara manual tanpa prosedur terpisah yang disetujui.
+
+### 12.5.4 Status Operasional (Runbook)
+
+Status di bawah adalah status operasional runbook, diturunkan dari `profiles.deactivated_at`, `profiles.session_valid_after`, dan `auth.users.banned_until`. Status ini **bukan** enum database.
+
+| Status | `deactivated_at` | Ban Auth | Akses bisnis |
+|---|---|---|---|
+| `ACTIVE` | NULL | Tidak ada | Diizinkan sesuai role |
+| `DEACTIVATION_PENDING_AUTH` | Terisi | Tidak ada atau belum dipastikan | Ditolak (database) |
+| `DEACTIVATED` | Terisi | Aktif | Ditolak |
+| `REACTIVATION_PENDING_DB` | Terisi | Sudah dicabut | Ditolak (database); pengguna dapat login, tetapi tidak memperoleh akses bisnis |
+| `REACTIVATED` | NULL; `session_valid_after` = waktu reaktivasi | Tidak ada | Hanya melalui sesi yang dibuat setelah reaktivasi |
+
+Kondisi tidak konsisten: `deactivated_at` NULL tetapi ban Auth aktif, misalnya karena ban diberikan langsung dari dashboard, atau karena dua operasi lintas sistem saling tumpang tindih (§12.5.9).
+-   Login dan refresh ditolak Auth, tetapi access token yang sudah terbit untuk sesi yang lolos pemeriksaan helper tetap memperoleh akses bisnis sampai kedaluwarsa (`jwt_expiry` lokal 3600 detik).
+-   Developer menyelesaikannya mengikuti respons yang disetujui di §12.5.7 (G3): selidiki segera, dan bila diotorisasi serta aman, tutup akses lebih dulu dengan runbook penonaktifan lengkap memakai `operation_id` baru. Pencabutan ban hanya dilakukan setelah penyelidikan memastikan ban tersebut tidak disengaja.
+-   **Terkonfirmasi di lokal** (7SUP.4B-3B-R2, INC-01 sampai INC-04): saat Auth di-ban dan profil database masih aktif, JWT yang terbit sebelumnya tetap membaca profil milik akun tersebut. Penonaktifan database kemudian langsung menolak JWT yang sama.
+-   **Invariant operasional:** penonaktifan selalu **database lebih dulu, lalu ban Auth**; reaktivasi selalu **pencabutan ban Auth lebih dulu, lalu reaktivasi database**. Invariant ini ditegakkan oleh runbook dan disiplin operator, bukan oleh mekanisme otomatis. Ban yang diberikan langsung melalui dashboard atau API di luar runbook **tidak dicegat**.
+-   Deteksi: operator tepercaya memeriksa status `INCONSISTENT_ACTIVE_BANNED` melalui `admin_get_account_state` sebelum dan sesudah setiap operasi. Deteksi otomatis tidak diimplementasikan. [KEPUTUSAN] (STACK-DECISION-LOG ADR-14, G3, disetujui 1 November 2026; respons wajib di §12.5.7)
+
+Status yang dapat diturunkan dari database oleh `admin_get_account_state` (§12.5.8). Database tidak dapat membedakan `DEACTIVATION_PENDING_AUTH` dari `REACTIVATION_PENDING_DB`, karena keduanya berarti `deactivated_at` terisi tanpa ban aktif. Keduanya dilaporkan sebagai `DEACTIVATED_NOT_BANNED`, dan runbook operasi yang sedang berjalan menentukan artinya. Keduanya menolak akses bisnis.
+
+| Status turunan | Kondisi |
+|---|---|
+| `NOT_FOUND` | Akun Auth tidak ada |
+| `AUTH_ONLY_NO_PROFILE` | Akun Auth ada, profil belum ada. Akses bisnis ditolak (helper NULL) |
+| `ACTIVE` | `deactivated_at` NULL dan tidak ada ban aktif. Mencakup status runbook `ACTIVE` dan `REACTIVATED` |
+| `DEACTIVATED_NOT_BANNED` | `deactivated_at` terisi, tidak ada ban aktif |
+| `DEACTIVATED` | `deactivated_at` terisi, ban aktif |
+| `INCONSISTENT_ACTIVE_BANNED` | `deactivated_at` NULL, ban aktif |
+
+### 12.5.5 Runbook Penonaktifan
+
+[KEPUTUSAN] (ADR-13 amandemen OD-29; ADR-14). Dijalankan hanya oleh developer tepercaya, mengikuti aturan satu operasi pada satu waktu (§12.5.7). Langkah database memakai function admin melalui sesi SQL tepercaya sebagai `postgres`, bukan melalui Data API. Langkah Auth memakai Admin API dari script tepercaya; secret key dibaca dari environment atau file privat, tidak pernah dari argumen command line, browser, maupun Route Handler. **PostgreSQL dan Auth Admin API tidak berbagi satu transaksi.**
+
+1.  **Baca status awal.** Buat `operation_id` baru (UUID) untuk operasi ini dan catat di runbook bersama target, alasan, dan nama operator. Panggil `admin_get_account_state(target)`. Catat `session_valid_after` (S) dan event terbaru target (L).
+2.  **Ubah status database.** `admin_deactivate_account(target, S, actor, reason, operation_id)`.
+    -   Hasil `DEACTIVATED` atau `ALREADY_DEACTIVATED`: catat `deactivated_at` (D) dan event operasi ini (E1).
+    -   Error `P0001` (misalnya `LAST_ACTIVE_OWNER` atau `STATE_CONFLICT`): berhenti. Langkah Auth **tidak** dijalankan. Catat penolakan di runbook.
+    -   Error infrastruktur atau respons hilang: hentikan urutan, lalu jalankan `admin_get_account_state(target, operation_id)`. Bila event operasi ini ada, perlakukan hasil tercatat sebagai hasil langkah 2. Bila tidak ada, operator dapat mengulang langkah 2 secara manual dengan `operation_id` yang sama setelah memverifikasi prasyaratnya, maksimal 3 kali (§12.5.9). Tidak ada retry otomatis (§12.5.7).
+3.  **Pastikan database menolak akses.** `admin_get_account_state` menunjukkan `deactivated_at` = D. Penolakan sesi target secara nyata hanya dibuktikan dalam pengujian.
+4.  **Ban Auth.** Tepat sebelum setiap percobaan, panggil `admin_get_account_state(target)` dan pastikan `deactivated_at` masih D serta event terbaru target masih E1. Bila tidak, langkah Auth **dibatalkan** sebagai perintah usang (§12.5.9). Lalu `PUT /auth/v1/admin/users/{id}` dengan `ban_duration` `876000h`.
+    -   **Durasi yang disetujui** [KEPUTUSAN] (ADR-14 G2, 1 November 2026): `876000h` untuk MVP **lokal**. Durasi ini terbatas, sekitar 100 tahun, bukan ban permanen, dan pernah diterima Supabase Auth lokal v2.197.0 (7SUP.4B-1). Ban Auth adalah pertahanan tambahan yang membatasi login dan refresh. Ban tidak langsung membatalkan access JWT yang sudah terbit. Kontrol utama penolakan otorisasi aplikasi tetap `profiles.deactivated_at` (langkah 2).
+    -   Durasi ban produksi, pemantauan masa berlaku ban, kompatibilitas versi Auth di cloud, dan kebijakan retensi akun ditinjau terpisah (**DEFERRED TO PRODUCTION**).
+5.  **Verifikasi `banned_until`.** Baca ulang pengguna melalui Admin API: `banned_until` harus jauh di masa depan.
+6.  **Verifikasi status akhir dan catat hasil.** `admin_get_account_state` harus `DEACTIVATED`, dengan `deactivated_at` = D dan event terbaru = E1. Catat di runbook: `operation_id`, operator, alasan, D, `banned_until`, waktu tiap langkah, dan hasil akhir. Rujukan tambahan: event E1 di `app_private.account_lifecycle_events` dan entri `user_modified` di `auth.audit_log_entries`.
+
+Penanganan kegagalan:
+
+-   Langkah 2 gagal: berhenti; ban Auth tidak dijalankan.
+-   Langkah 4 atau 5 gagal (status `DEACTIVATION_PENDING_AUTH`):
+    -   `deactivated_at` **dipertahankan**. Kegagalan Auth tidak pernah memulihkan akses database secara otomatis.
+    -   Operator dapat mengulang langkah 4 dan 5 secara manual, maksimal 3 kali, masing-masing didahului pemeriksaan langkah 4. Ban hanya menimpa `banned_until`, tetapi permintaan ban **tidak idempotent secara transaksional**: durasi relatif yang diterapkan ulang dapat menggeser `banned_until`.
+    -   Bila request ban timeout atau hasilnya tidak pasti, hentikan urutan dan baca pengguna dulu (langkah 5). Bila ban sudah berlaku, jangan mengulang.
+    -   Bila batas pengulangan habis, akun dibiarkan `DEACTIVATION_PENDING_AUTH` (akses bisnis tetap ditolak database), dan kondisi parsial ini dicatat sebelum operasi lain dimulai.
+-   Langkah 6 menemukan `deactivated_at` NULL atau event yang lebih baru dari operasi lain: status tidak konsisten. Berhenti, catat, dan putuskan secara manual apakah menjalankan penonaktifan baru dengan `operation_id` baru.
+
+### 12.5.6 Runbook Reaktivasi
+
+1.  **Baca status awal.** Prasyarat: validasi sesi (§12.5.2 butir 3) sudah diimplementasikan dan lulus uji §14.5; di lokal sudah terpenuhi. Buat `operation_id` baru dan catat di runbook. `admin_get_account_state(target)` harus `DEACTIVATED` atau `DEACTIVATED_NOT_BANNED`. Catat `deactivated_at` (E) dan event terbaru (L).
+2.  **Cabut ban Auth.** Tepat sebelum setiap percobaan, pastikan `deactivated_at` masih E dan event terbaru masih L. Lalu `PUT /auth/v1/admin/users/{id}` dengan `ban_duration` `none`. Akses bisnis tetap ditolak database.
+3.  **Verifikasi status Auth dan database.** Baca ulang pengguna: `banned_until` NULL atau sudah lewat. `admin_get_account_state(target)` harus `DEACTIVATED_NOT_BANNED` dengan `deactivated_at` masih E. Status menjadi `REACTIVATION_PENDING_DB`.
+4.  **Ubah status database secara atomik.** `admin_reactivate_account(target, E, actor, reason, operation_id)`, dalam satu transaksi, setelah pemeriksaan `operation_id` (§12.5.9):
+    -   Menolak dengan `STATE_CONFLICT` bila `deactivated_at` saat ini tidak sama dengan E, dibandingkan secara NULL-safe (`IS DISTINCT FROM`). Ini termasuk akun yang sudah aktif ketika operator mengharapkan akun nonaktif.
+    -   Mengembalikan `ALREADY_ACTIVE` tanpa perubahan hanya bila operator secara eksplisit mengharapkan akun aktif (E = NULL) dan `deactivated_at` memang NULL. `session_valid_after` **tidak** dimajukan, agar sesi sah dari reaktivasi sebelumnya tidak terputus.
+    -   Menolak dengan `AUTH_STILL_BANNED` bila `auth.users.banned_until` target masih di masa depan. Pemeriksaan ini hanya dilakukan bila reaktivasi benar-benar akan mengubah status, hanya berlaku pada saat itu, dan tidak mencegah ban yang diberikan sesudahnya.
+    -   Selain itu: `session_valid_after = clock_timestamp()` dan `deactivated_at = NULL` dalam satu `UPDATE`, ditambah satu event `REACTIVATE`.
+    -   Pengulangan dengan `operation_id` yang sama setelah reaktivasi berhasil mengembalikan hasil tercatat (`replayed = true`). Tidak ada `UPDATE` lagi dan cutoff tidak dimajukan.
+5.  **Verifikasi cutoff dan status akhir.** `admin_get_account_state` harus `ACTIVE`, dengan `session_valid_after` = cutoff (C) dan event terbaru = event operasi ini. Catat di runbook.
+6.  **Login ulang.** Pengguna wajib login ulang. Hanya sesi yang dibuat setelah C yang diterima; sesi lama, termasuk yang di-refresh, tetap ditolak. Bukti nyata dengan sesi target hanya dikumpulkan dalam pengujian.
+
+Penanganan kegagalan:
+
+-   Langkah 2 atau 3 gagal: status tetap `DEACTIVATED`. Hentikan urutan dan baca ulang kedua sistem. Operator dapat mengulang langkah 2 dan 3 secara manual, maksimal 3 kali, dengan pemeriksaan langkah 2.
+-   Langkah 4 gagal setelah ban dicabut (status `REACTIVATION_PENDING_DB`):
+    -   Database tetap menolak akses bisnis.
+    -   Error infrastruktur atau respons hilang: hentikan urutan dan cek `admin_get_account_state(target, operation_id)` lebih dulu. Bila event operasi ini belum ada dan prasyarat terverifikasi, operator dapat mengulang langkah 4 secara manual dengan `operation_id` yang sama, maksimal 3 kali.
+    -   Error `P0001`, atau batas pengulangan habis: **kompensasi** dengan memberlakukan ban lagi (langkah 4 dan 5 runbook penonaktifan, dengan pemeriksaan bahwa `deactivated_at` masih E). Akun kembali ke `DEACTIVATED`. Catat kondisi ini.
+-   Bila ragu, database dibiarkan dalam keadaan nonaktif.
+
+**Provisioning profil** (ADR-14 J8):
+
+1.  Buat `operation_id` baru. Buat akun melalui Auth Admin API dengan email terkonfirmasi secara administratif, lalu catat ID akun. Status: `AUTH_ONLY_NO_PROFILE`; akses bisnis ditolak.
+2.  `admin_provision_profile(target, expected_email, name, role, actor, reason, operation_id)`.
+3.  Verifikasi `admin_get_account_state` = `ACTIVE`, lalu pengguna login. Sesi yang dibuat sebelum provisioning tidak diterima (§12.5.8).
+4.  Bila langkah 2 gagal, akun tetap `AUTH_ONLY_NO_PROFILE` dan aman. Setelah penolakan `P0001`, baca status ulang dan ulangi langkah 2 dengan `operation_id` baru setelah penyebabnya diperbaiki (§12.5.9). Setelah error infrastruktur atau respons hilang tanpa event tercatat, `operation_id` yang sama boleh dipakai ulang secara manual. Menghapus akun Auth yang batal di luar akun uji memerlukan otorisasi tersendiri (ADR-11).
+
+**Perubahan role** (ADR-14 J4, J5): `admin_get_account_state` → `admin_set_role(target, expected_role, new_role, actor, reason, operation_id)` → verifikasi status akhir.
+
+-   **Perilaku historis** (migration `20261031163955_account_lifecycle_admin.sql` saja; teramati di 7SUP.4B-3A): perubahan role berlaku pada statement berikutnya, karena helper membaca `profiles.role` setiap kali dipanggil. `admin_set_role()` versi ini mengubah `profiles.role` tanpa memajukan `session_valid_after`, sehingga sesi yang sudah ada memperoleh hak role baru pada request terotorisasi berikutnya. Perilaku ini masih berlaku di lingkungan yang **belum** menerapkan migration keempat.
+-   **Perilaku yang terpasang di lokal** [KEPUTUSAN] (ADR-14 G1, Opsi B, disetujui 1 November 2026; **APPROVED — IMPLEMENTED AND TARGETED-TESTED LOCALLY**; migration `20261101044858_admin_role_change_session_cutoff.sql`, 7SUP.4B-3I):
+    -   Setiap perubahan role dengan outcome `APPLIED`, baik `STAFF_WAREHOUSE → OWNER` maupun `OWNER → STAFF_WAREHOUSE`, mengubah `role` dan memajukan `session_valid_after = clock_timestamp()` dalam satu `UPDATE`. Sesi Auth yang dibuat sebelum cutoff kehilangan otorisasi aplikasi, dan pengguna wajib membuat sesi Auth baru sebelum memakai hak role baru.
+    -   `NOOP` (`ROLE_UNCHANGED`) tidak memajukan cutoff. Replay dengan `operation_id` yang sama mengembalikan hasil historis, termasuk cutoff historis, tanpa memajukan cutoff dan tanpa event baru.
+    -   Kontrak kode error, `request_fingerprint` (§12.5.9), pemeriksaan expected state, perlindungan OWNER aktif terakhir, dan audit append-only (§4.11) tidak berubah. Event `SET_ROLE` `APPLIED` mencatat cutoff lama dan baru yang berbeda.
+    -   **Batas:** cutoff tidak mencabut sesi maupun refresh token Supabase Auth. Refresh sesi lama tetap berhasil di Auth (HTTP 200), tetapi JWT hasilnya ditolak helper (§14.5 #40). Karena itu setiap policy RLS dan RPC bisnis wajib memakai `app_private.current_app_role()` (§12.5.2). Belum ada antarmuka login aplikasi maupun penanganan logout paksa. Login yang bersamaan dengan transaksi perubahan role belum diuji.
+    -   Operator tetap membaca ulang state sebelum perintah berikutnya, karena perintah penonaktifan yang disiapkan sebelum perubahan role akan ditolak `STATE_CONFLICT` (expected `session_valid_after` sudah berubah).
+
+### 12.5.7 Kebijakan Administratif
+
+-   Hanya developer tepercaya yang membuat, menonaktifkan, dan mereaktivasi akun. Tidak ada antarmuka manajemen akun pada MVP.
+-   Kewenangan administratif adalah sesi SQL tepercaya sebagai `postgres` ditambah Auth Admin API dari script tepercaya. Status `OWNER` di aplikasi **tidak** memberi kewenangan administratif. [KEPUTUSAN] (ADR-14 J3)
+-   Staff Warehouse dan Owner tidak dapat mengubah status akun maupun role melalui API aplikasi. Hal ini dijamin oleh tidak adanya grant tulis pada `profiles` untuk `authenticated` dan tidak adanya hak `EXECUTE` pada function admin.
+-   Pengguna tidak dapat menonaktifkan atau mereaktivasi akunnya sendiri melalui API aplikasi.
+-   **Satu operator, satu operasi** [KEPUTUSAN] (ADR-14 J7, disetujui bersyarat):
+    -   Hanya satu operasi siklus akun yang berjalan pada satu waktu, untuk seluruh akun. Tidak boleh ada script, terminal, maupun operator yang tumpang tindih.
+    -   Setiap operasi selesai, atau masuk ke kondisi kegagalan parsial yang dicatat eksplisit, sebelum operasi lain dimulai.
+    -   Setiap langkah Auth API diikuti verifikasi status akhir.
+    -   Bila proses terputus, status database dan Auth diperiksa lebih dulu sebelum mengulang.
+    -   Script orkestrasi tepercaya di masa depan memakai penjaga eksekusi eksklusif lokal bila memungkinkan secara teknis.
+    -   **Batasan:** ini bukan penguncian terdistribusi dan tidak aman secara teknis terhadap dua operator atau mesin yang mengabaikan runbook. J7 tidak menghilangkan setiap race lintas sistem. Koordinasi operasi yang tahan lama wajib dipertimbangkan ulang sebelum ada lebih dari satu operator atau antarmuka admin.
+-   **Runbook manual satu operator** [KEPUTUSAN] (ADR-14 G3, disetujui 1 November 2026; **APPROVED — MANUAL OPERATIONAL POLICY**). Ini prosedur operasional yang dijalankan operator, **bukan** penegakan lintas sistem otomatis:
+    -   **Sebelum operasi:**
+        -   Baca status akun dengan `admin_get_account_state`.
+        -   Pastikan target yang dimaksud dan aksi yang diminta.
+        -   Tetapkan parameter expected state dari hasil bacaan tersebut.
+        -   Periksa apakah sudah ada state tidak konsisten antara Auth dan database.
+        -   Buat dan catat `operation_id` baru untuk setiap mutasi database.
+    -   **Penonaktifan:** database lebih dulu, verifikasi akses aplikasi ditolak, ban Auth dengan durasi yang disetujui (§12.5.5), lalu baca ulang kedua sistem dan verifikasi status akhir.
+    -   **Reaktivasi:** pastikan akun sedang nonaktif, cabut ban Auth lebih dulu, pastikan profil database masih nonaktif, reaktivasi database dengan expected state yang benar, lalu verifikasi cutoff sesi baru dan status akhir (§12.5.6).
+    -   **Deteksi dan respons `INCONSISTENT_ACTIVE_BANNED`** (profil database aktif, akun Auth dibanned):
+        -   Uji lokal (7SUP.4B-3B-R2) menunjukkan JWT yang terbit sebelum ban tetap dapat membaca profilnya dalam state ini. Jangan menganggap ban Auth sudah mencabut seluruh akses aplikasi.
+        -   Selidiki segera.
+        -   Bila diotorisasi dan aman, nonaktifkan profil database melalui `admin_deactivate_account`, lalu verifikasi akses aplikasi ditolak.
+        -   Bila penjaga keamanan seperti `LAST_ACTIVE_OWNER` mencegah transisi yang aman: STOP dan eskalasi.
+    -   **Retry:** tidak ada retry otomatis. Setelah respons tidak pasti:
+        1.  Hentikan urutan yang sedang berjalan.
+        2.  Baca ulang status database dan Auth.
+        3.  Periksa event siklus akun terkait dan `operation_id`-nya.
+        4.  Tentukan apakah operasi sebelumnya sudah commit.
+        5.  Ulangi hanya bila hasil dan prasyarat sudah cukup terverifikasi.
+        6.  Kontrak idempotency panggilan database (§12.5.9) tetap berlaku.
+
+        Permintaan HTTP Auth **tidak** idempotent secara transaksional: durasi ban relatif yang diterapkan ulang dapat menggeser `banned_until`.
+    -   **STOP dan selidiki bila:**
+        -   Terjadi `OPERATION_ID_CONFLICT`.
+        -   `LAST_ACTIVE_OWNER` mencegah operasi.
+        -   Expected state tidak cocok.
+        -   `AUTH_STILL_BANNED` tetap muncul di luar dugaan.
+        -   Hasil Auth dan database tidak dapat direkonsiliasi.
+        -   Respons tidak pasti tidak dapat diselesaikan dengan aman.
+        -   Target operasi atau kewenangan operator tidak pasti.
+    -   **Bukti yang wajib disimpan:**
+        -   ID akun target.
+        -   `actor` dan `reason` dari operator.
+        -   `operation_id` database.
+        -   Status sebelum dan sesudah.
+        -   SQLSTATE atau hasil database.
+        -   Hasil HTTP Auth.
+        -   Rujukan event siklus akun dan entri audit Auth.
+        -   Setiap operasi yang tidak lengkap atau dikompensasi.
+
+        Access token, refresh token, password, API key, maupun secret lain **tidak pernah** disimpan di runbook.
+    -   **Batas:**
+        -   PostgreSQL dan Auth Admin API tidak berbagi transaksi. Advisory lock database hanya menyerialkan transaksi function admin dan dilepas saat commit, sehingga tidak membuat panggilan HTTP Auth atomik.
+        -   Belum ada layanan orkestrasi permanen, pemantauan latar, maupun koordinasi terdistribusi.
+        -   Pemulihan dari crash dan gangguan jaringan nyata belum dibuktikan.
+        -   Atribusi operator tidak dibuktikan secara kriptografis.
+        -   Operasi multi-operator tidak disetujui.
+-   **Perlindungan OWNER aktif terakhir:** mekanisme di §12.5.10. Jaminan ini hanya berlaku untuk operasi yang melalui function admin.
+-   **Mutasi langsung dilarang:** runbook melarang `INSERT`, `UPDATE`, maupun `DELETE` langsung pada `role`, `deactivated_at`, dan `session_valid_after`, kecuali dalam prosedur pemulihan darurat yang diotorisasi terpisah. SQL berhak tinggi yang melewati function admin juga melewati perlindungan OWNER aktif terakhir dan pencatatan event. Trigger penjaga `UPDATE` langsung **ditunda** (ADR-14 J2).
+-   **Pemulihan darurat:** bila seluruh OWNER terkunci, pemulihan dilakukan developer melalui sesi SQL sebagai `postgres`. Tindakan ini dicatat di runbook, merupakan prosedur tersendiri yang memerlukan otorisasi terpisah, dan tidak tersedia melalui API aplikasi.
+-   Penghapusan akun berada di luar scope. ID pengguna, role, profil, dan rujukan audit transaksi tetap utuh (ADR-11). Penghapusan akun uji sekali pakai di lingkungan lokal hanya dilakukan pada checkpoint pengujian yang diotorisasi.
+-   **Audit** [KEPUTUSAN] (ADR-14 J1, J11):
+    -   Tidak ada kolom audit baru di `profiles`.
+    -   Perubahan status dan role oleh function admin dicatat di `app_private.account_lifecycle_events` (§4.11).
+    -   Langkah Auth, penolakan, dan kegagalan parsial dicatat di runbook operator.
+    -   `auth.audit_log_entries` menjadi bukti pendukung langkah Auth saja. Log ini tidak membedakan ban dari pencabutan ban dan tidak mencatat perubahan PostgreSQL (§12.5.1).
+    -   Ketiga sumber dihubungkan melalui `operation_id` dan waktu.
+
+### 12.5.8 Antarmuka Function Admin
+
+[KEPUTUSAN] (ADR-14 J3, J5, J6, J8, J9). **Diimplementasikan di lokal** (migration `20261031163955_account_lifecycle_admin.sql`; `admin_set_role` diganti oleh migration aditif `20261101044858_admin_role_change_session_cutoff.sql` untuk G1) dan lulus uji integrasi lokal (§14.5). Migration-nya bersifat aditif, tidak mengubah dua migration yang sudah diterapkan, dan tidak mengubah `app_private.current_app_role()`.
+
+Properti umum semua function di bawah:
+
+-   Berada di schema `app_private`, `LANGUAGE plpgsql`, `SECURITY INVOKER`, dan dimiliki `postgres` (diverifikasi di lingkungan lokal).
+-   `SET search_path = ''` dan semua objek dirujuk dengan nama schema lengkap. Function mutasi juga memakai `SET lock_timeout = '5s'`.
+-   `REVOKE ALL ON FUNCTION … FROM PUBLIC, anon, authenticated, service_role`, tanpa `GRANT` apa pun. `authenticated` tetap memiliki `USAGE` pada `app_private` karena dibutuhkan helper role, sehingga keamanan function admin bergantung pada tidak adanya `EXECUTE`. Hal ini diperiksa di akhir migration dan diuji.
+-   Tidak dipanggil melalui Data API. `app_private` tidak diekspos.
+
+| Function | Argumen | Kembalian | Perilaku |
+|---|---|---|---|
+| `admin_assert_trusted_context()` | — | `void` | Menolak dengan `UNTRUSTED_CONTEXT` bila `current_user` bukan `postgres`. Sebagai pertahanan tambahan, juga menolak bila setting `request.jwt.claims` terisi. Setting ini hanya sinyal pemanggilan melalui PostgREST, bukan kredensial identitas. Dipanggil pertama oleh semua function admin lain |
+| `admin_get_account_state` | `p_user_id uuid`, `p_operation_id uuid` (opsional) | `jsonb` | Hanya membaca, tanpa advisory lock. Mengembalikan: keberadaan akun Auth, email terkonfirmasi atau tidak, `banned_until` dan status ban, keberadaan profil, `role`, `deactivated_at`, `session_valid_after`, status turunan (§12.5.4), jumlah OWNER aktif, jumlah sesi Auth target, event terbaru target, serta event untuk `p_operation_id` bila diberikan. Tidak mengembalikan email, token, maupun secret |
+| `admin_provision_profile` | `p_user_id uuid`, `p_expected_email text`, `p_name text`, `p_role public.user_role`, `p_actor text`, `p_reason text`, `p_operation_id uuid` | `jsonb` | Akun Auth wajib sudah ada, emailnya sama dengan `p_expected_email` tanpa membedakan huruf besar/kecil, sudah terkonfirmasi, dan tidak sedang di-ban. Profil belum boleh ada; profil yang sudah ada ditolak dengan `STATE_CONFLICT`, termasuk yang isinya identik. Membuat profil dengan `deactivated_at` NULL dan `session_valid_after = clock_timestamp()`, sehingga sesi yang dibuat saat akun belum memiliki profil tidak memperoleh akses. Menulis event `PROVISION` |
+| `admin_deactivate_account` | `p_user_id uuid`, `p_expected_session_valid_after timestamptz` (boleh NULL), `p_actor text`, `p_reason text`, `p_operation_id uuid` | `jsonb` | Pertama, bandingkan `session_valid_after` saat ini dengan nilai yang diharapkan secara NULL-safe (`IS DISTINCT FROM`); bila berbeda: `STATE_CONFLICT`. Perintah dari siklus aktivasi sebelumnya ditolak di sini. Baru kemudian: bila sudah nonaktif, `ALREADY_DEACTIVATED`, nilai `deactivated_at` awal dipertahankan, event `NOOP`. Selain itu: perlindungan OWNER aktif terakhir (§12.5.10), `deactivated_at = clock_timestamp()`, `session_valid_after` tidak diubah, event `APPLIED` |
+| `admin_reactivate_account` | `p_user_id uuid`, `p_expected_deactivated_at timestamptz` (boleh NULL; NULL berarti operator secara eksplisit mengharapkan akun sudah aktif), `p_actor text`, `p_reason text`, `p_operation_id uuid` | `jsonb` | Lihat §12.5.6 langkah 4 |
+| `admin_set_role` | `p_user_id uuid`, `p_expected_role public.user_role`, `p_new_role public.user_role`, `p_actor text`, `p_reason text`, `p_operation_id uuid` | `jsonb` | Pertama, bila role saat ini berbeda dari `p_expected_role`: `STATE_CONFLICT`, termasuk bila role saat ini kebetulan sudah sama dengan `p_new_role`. Baru kemudian: bila role saat ini sama dengan `p_new_role`, `ROLE_UNCHANGED` tanpa mengubah profil, dengan event `NOOP`. Penurunan dari OWNER aktif tunduk pada §12.5.10. Selain itu: ubah role dan tulis event `APPLIED`. Berlaku juga untuk profil nonaktif, karena tidak mengurangi jumlah OWNER aktif. Sejak migration `20261101044858` (G1), outcome `APPLIED` juga memajukan `session_valid_after` dalam `UPDATE` yang sama; `NOOP` dan replay tidak (§12.5.6) |
+
+Urutan pemeriksaan pada function mutasi (wajib, [KEPUTUSAN] ADR-14 J5):
+
+1.  `admin_assert_trusted_context()`.
+2.  Validasi dan normalisasi semua argumen (§12.5.9): tidak NULL, kecuali argumen yang memang boleh NULL; `actor`, `reason`, dan nama profil tidak kosong setelah spasi di awal dan akhir dibuang, dengan panjang terbatas; timestamp yang diberikan harus berhingga (`infinity` dan `-infinity` ditolak).
+3.  Hitung `request_fingerprint` dari input yang sudah dinormalisasi (§12.5.9).
+4.  Advisory lock bersama (§12.5.10).
+5.  Pemeriksaan `operation_id` dan replay (§12.5.9). Bila `operation_id` sudah ada, function berhenti di langkah ini: hasil tercatat dikembalikan, atau `OPERATION_ID_CONFLICT`.
+6.  Kunci baris target (`FOR UPDATE`). Bila profil tidak ada: `PROFILE_NOT_FOUND`. Untuk provisioning: pemeriksaan akun Auth dan profil yang sudah ada.
+7.  Pemeriksaan expected state, selalu sebelum jalur `NOOP`.
+8.  Jalur idempoten (`NOOP`) bila status sudah sesuai tujuan.
+9.  Pemeriksaan ban Auth (reaktivasi dan provisioning) dan perlindungan OWNER aktif terakhir, bila relevan.
+10. `UPDATE` atau `INSERT` profil dan tepat satu `INSERT` event, termasuk `request_fingerprint`, dalam transaksi yang sama.
+
+Kembalian sukses berbentuk `jsonb` dengan kunci `result`, `outcome` (`APPLIED` atau `NOOP`), `replayed`, `operation_id`, `event_id`, `user_id`, `role`, `deactivated_at`, dan `session_valid_after`. Nilai `result`: `PROVISIONED`, `DEACTIVATED`, `ALREADY_DEACTIVATED`, `REACTIVATED`, `ALREADY_ACTIVE`, `ROLE_CHANGED`, atau `ROLE_UNCHANGED`.
+
+**Kontrak error** [KEPUTUSAN] (ADR-14 J9): error bisnis yang diharapkan dimunculkan dengan `RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = '<KODE>'`. `MESSAGE`, `DETAIL`, dan `HINT` tidak memuat email, token, secret, maupun detail akun yang sensitif.
+
+| Kode | Kondisi |
+|---|---|
+| `UNTRUSTED_CONTEXT` | Function dipanggil di luar konteks tepercaya |
+| `INVALID_ARGUMENT` | Argumen tidak valid, termasuk timestamp tidak berhingga. Juga dipakai saat provisioning bila akun Auth tidak ditemukan atau email tidak cocok; pesan tidak membedakan kedua kasus tersebut |
+| `PROFILE_NOT_FOUND` | Profil target tidak ada |
+| `LAST_ACTIVE_OWNER` | Operasi akan menyisakan nol OWNER aktif |
+| `STATE_CONFLICT` | Expected state tidak cocok; profil sudah ada saat provisioning; email akun belum terkonfirmasi |
+| `AUTH_STILL_BANNED` | Reaktivasi atau provisioning saat ban Auth aktif |
+| `OPERATION_ID_CONFLICT` | `operation_id` sudah tercatat dengan `request_fingerprint` berbeda, yaitu input material yang berbeda, termasuk aksi atau target lain (§12.5.9). Kode tambahan dalam kontrak J9 |
+
+Error infrastruktur, seperti `55P03` (`lock_timeout`), `40P01` (deadlock), dan koneksi terputus, tidak memakai `P0001`. Setiap error, baik bisnis maupun infrastruktur, membatalkan seluruh transaksi sehingga tidak ada perubahan database parsial.
+
+### 12.5.9 `operation_id`, Idempotency, dan Perintah Usang
+
+[KEPUTUSAN] (ADR-14 J5). Aturan ini memakai tabel event (§4.11), termasuk kolom `request_fingerprint`, sebagai state persisten. Tidak ada kolom atau tabel tambahan lain yang dibutuhkan.
+
+-   **Arti:** satu `operation_id` (UUID dari operator) mewakili satu operasi siklus akun, yaitu satu aksi terhadap satu target dengan satu set input material dalam satu run runbook. ID yang sama dipakai untuk setiap pengulangan langkah database operasi tersebut, dengan input yang sama persis, dan dicatat di runbook untuk langkah Auth-nya.
+-   **Keunikan:** `operation_id` unik di `account_lifecycle_events`. Satu operasi menghasilkan tepat satu event (`APPLIED` atau `NOOP`).
+-   **Urutan wajib** (sama dengan §12.5.8):
+    1.  Validasi konteks admin tepercaya.
+    2.  Validasi dan normalisasi semua argumen.
+    3.  Hitung `request_fingerprint`.
+    4.  Ambil advisory lock bersama.
+    5.  Periksa apakah `operation_id` sudah ada.
+    6.  Bila sudah ada:
+        -   Bandingkan `request_fingerprint`. Bila berbeda: `OPERATION_ID_CONFLICT`.
+        -   Bila sama: kembalikan hasil historis yang tercatat dengan `replayed = true`, **apa pun status akun saat ini**.
+        -   Profil tidak diubah dan tidak ada event baru.
+        -   Hasil historis **tidak** memberi otorisasi untuk memanggil Auth API lagi. Keputusan langkah Auth tetap mengikuti pemeriksaan status langkah Auth di runbook (§12.5.5 langkah 4, §12.5.6 langkah 2).
+    7.  Bila belum ada:
+        -   Kunci baris target bila relevan.
+        -   Periksa expected state saat ini.
+        -   Terapkan mutasi yang diizinkan, atau `NOOP` yang sah.
+        -   Catat tepat satu event secara atomik dalam transaksi yang sama.
+-   **Hasil historis yang dikembalikan saat replay** diturunkan dari event tercatat:
+    -   `result` dipetakan dari pasangan `action`/`outcome`: `PROVISION`/`APPLIED` → `PROVISIONED`; `DEACTIVATE`/`APPLIED` → `DEACTIVATED`; `DEACTIVATE`/`NOOP` → `ALREADY_DEACTIVATED`; `REACTIVATE`/`APPLIED` → `REACTIVATED`; `REACTIVATE`/`NOOP` → `ALREADY_ACTIVE`; `SET_ROLE`/`APPLIED` → `ROLE_CHANGED`; `SET_ROLE`/`NOOP` → `ROLE_UNCHANGED`.
+    -   `role`, `deactivated_at`, dan `session_valid_after` diambil dari kolom `new_*` event, bukan dari status profil saat ini.
+    -   Karena itu event `NOOP` juga mengisi kolom `old_*` dan `new_*` dengan nilai saat itu.
+-   **Dampak replay:**
+    -   Menangani kasus commit database berhasil tetapi respons hilang.
+    -   Penonaktifan lama tidak pernah diterapkan ulang hanya karena konfirmasi HTTP atau SQL-nya hilang, termasuk bila akun sudah direaktivasi sesudahnya.
+    -   Reaktivasi yang berhasil tidak menjalankan `UPDATE` lagi dan tidak memajukan cutoff saat di-replay.
+-   **`operation_id` yang sama dengan input material berbeda**, termasuk aksi, target, expected state, role, nama, email, `actor`, atau `reason` yang berbeda: `OPERATION_ID_CONFLICT`, tanpa perubahan.
+-   **Penolakan dan error infrastruktur tidak menulis event.** Karena itu:
+    -   Pengulangan dengan `operation_id` yang sama setelah error infrastruktur dievaluasi ulang terhadap status saat ini, dan hanya diterapkan sekali.
+    -   Setelah penolakan `P0001`, operasi dihentikan. Operator membaca status ulang, lalu memutuskan apakah memulai operasi baru dengan `operation_id` baru dan expected state baru.
+-   **Commit berhasil tetapi respons hilang:** operator memanggil `admin_get_account_state(target, operation_id)`. Bila event operasi tersebut ada, hasilnya dipakai tanpa memanggil ulang function mutasi. Memanggil ulang dengan `operation_id` dan input yang sama persis juga aman, karena hasilnya berupa replay.
+-   **Batas deteksi:** `OPERATION_ID_CONFLICT` hanya dapat dideteksi bila `operation_id` sudah memiliki event. `operation_id` dari percobaan yang ditolak atau gagal sebelum commit tidak memiliki event, sehingga pemakaian ulang dengan input berbeda tidak terdeteksi oleh database. Runbook mewajibkan `operation_id` baru setelah penolakan `P0001`.
+-   **Perintah penonaktifan usang setelah reaktivasi selesai:** penonaktifan membawa `p_expected_session_valid_after` dari langkah 1. Reaktivasi selalu memajukan `session_valid_after`, sehingga perintah penonaktifan baru yang disusun dari status sebelum reaktivasi ditolak dengan `STATE_CONFLICT`.
+-   **Pengulangan terlambat tidak boleh mengubah status yang lebih baru.** Expected state selalu diperiksa sebelum jalur `NOOP`, dengan perbandingan NULL-safe:
+    -   **Penonaktifan:** `p_expected_session_valid_after` harus sama dengan `session_valid_after` saat ini, termasuk NULL dengan NULL. Hanya setelah itu `ALREADY_DEACTIVATED` dipertimbangkan.
+    -   **Reaktivasi:** `p_expected_deactivated_at` harus sama dengan `deactivated_at` saat ini. Nilai NULL berarti operator mengharapkan akun sudah aktif; hanya dalam kondisi ini `ALREADY_ACTIVE` dikembalikan, tanpa memajukan cutoff. Nilai bukan NULL untuk akun yang sudah aktif, atau nilai yang berbeda untuk akun yang dinonaktifkan ulang, menghasilkan `STATE_CONFLICT`. Tidak ada ambiguitas, karena akun nonaktif selalu memiliki `deactivated_at` yang terisi.
+    -   **Perubahan role:** `p_expected_role` yang berbeda dari role saat ini menghasilkan `STATE_CONFLICT`, bahkan bila role saat ini sudah sama dengan `p_new_role`. `ROLE_UNCHANGED` hanya dikembalikan setelah expected role cocok.
+    -   `NOOP` yang sah dengan `operation_id` baru mencatat event `NOOP` baru. Pengulangan identik dengan `operation_id` lama hanya me-replay hasil historis tanpa event baru.
+
+**Request fingerprint kanonik** [KEPUTUSAN] (ADR-14 J5):
+
+-   **Rumus:** `encode(pg_catalog.sha256(pg_catalog.convert_to(<objek kanonik>::text, 'UTF8')), 'hex')`. `pg_catalog.sha256(bytea)` adalah function bawaan PostgreSQL. Tidak memerlukan extension. Hasilnya 64 karakter heksadesimal huruf kecil.
+-   **Objek kanonik:** satu objek `jsonb` yang dibangun dengan `jsonb_build_object`, berisi tepat field yang tercantum di tabel di bawah untuk aksinya, tanpa field lain.
+    -   Representasi teks `jsonb` mengurutkan kunci secara deterministik dan memakai format spasi yang tetap, sehingga urutan penulisan argumen tidak memengaruhi hasil. Ini terverifikasi read-only di PostgreSQL 17.11 lokal.
+    -   Setiap peningkatan versi mayor PostgreSQL wajib mengulang uji fingerprint (§14.5). Bila format teks berubah, akibatnya adalah `OPERATION_ID_CONFLICT` palsu (fail-closed), bukan penerapan ulang.
+-   **Versi:** field `v` bernilai `"firaza.admin_lifecycle.v1"`. Perubahan aturan kanonik wajib memakai nilai versi baru.
+-   **NULL:** setiap field selalu ada. Argumen NULL ditulis sebagai JSON `null`.
+-   **Normalisasi** (nilai yang sama juga dipakai operasi dan disimpan):
+    -   **UUID:** teks UUID kanonik huruf kecil (`uuid::text`).
+    -   **Timestamp:** `to_char(<nilai> AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`, yaitu UTC dengan presisi mikrodetik. Hasilnya tidak bergantung pada setting `TimeZone` sesi dan tidak memakai cast implisit. Nilai yang sama yang ditulis dalam zona waktu berbeda menghasilkan teks yang sama (terverifikasi read-only).
+        -   Timestamp tidak berhingga ditolak saat validasi (`INVALID_ARGUMENT`), karena `to_char` mengembalikan NULL untuk `infinity` sehingga akan bertabrakan dengan NULL eksplisit.
+    -   **Role:** label enum sebagai teks (`OWNER` atau `STAFF_WAREHOUSE`).
+    -   **Email:** `lower(btrim(p_expected_email))`. Normalisasi yang sama dipakai saat membandingkan dengan `lower(auth.users.email)`.
+    -   **Nama, `actor`, `reason`:** `btrim(...)`, yaitu spasi di awal dan akhir dibuang, sedangkan huruf besar/kecil dan spasi di tengah dipertahankan. Nilai hasil `btrim` inilah yang disimpan di profil (nama) dan di event (`actor`, `reason`).
+-   **Dikecualikan:** `operation_id` (kunci pencarian), waktu saat ini, `session_user`, alamat klien, dan informasi runtime lain.
+
+| Aksi | Field kanonik, selain `v` dan `action` |
+|---|---|
+| `PROVISION` (`admin_provision_profile`) | `target_user_id`, `expected_email`, `name`, `role`, `actor`, `reason` |
+| `DEACTIVATE` (`admin_deactivate_account`) | `target_user_id`, `expected_session_valid_after` (boleh `null`), `actor`, `reason` |
+| `REACTIVATE` (`admin_reactivate_account`) | `target_user_id`, `expected_deactivated_at` (boleh `null`), `actor`, `reason` |
+| `SET_ROLE` (`admin_set_role`) | `target_user_id`, `expected_role`, `new_role`, `actor`, `reason` |
+
+-   Field `action` berisi label aksi di atas. Karena aksi dan target termasuk dalam fingerprint, `operation_id` yang dipakai untuk aksi atau target lain selalu menghasilkan `OPERATION_ID_CONFLICT`.
+-   **Batas:** fingerprint mendeteksi perbedaan input; ia **tidak** melindungi kerahasiaan. Email dan input lain yang mudah ditebak dapat dipulihkan dengan mencoba kandidat lalu menghitung hash-nya.
+-   **Langkah Auth tidak membawa `operation_id`** dan tidak dapat dikunci oleh database. Sebelum setiap percobaan atau pengulangan langkah Auth, operator memastikan status database dan event terbaru target masih sama dengan yang dicatat operasi tersebut (§12.5.5 langkah 4, §12.5.6 langkah 2). Bila ada event yang lebih baru dari operasi lain, langkah Auth dibatalkan sebagai perintah usang. Pemeriksaan ini point-in-time dan bergantung pada aturan satu operator (§12.5.7).
+-   **Atomicity lintas sistem tidak ada.** Lock database berakhir saat commit dan tidak melindungi langkah HTTP sesudahnya. Interleaving yang berbahaya, misalnya penonaktifan database, lalu reaktivasi oleh operasi lain, lalu ban dari operasi pertama, hanya dicegah oleh aturan satu operator dan dideteksi oleh verifikasi status akhir.
+
+### 12.5.10 Penguncian dan Perlindungan OWNER Aktif Terakhir
+
+[KEPUTUSAN] (ADR-14 J4). **Diimplementasikan dan lulus uji lokal**, termasuk dua transaksi bersamaan (§14.5 #15).
+
+-   **Invariant:**
+    -   Kondisi awal tanpa OWNER aktif, yaitu saat provisioning pertama, diizinkan.
+    -   Setelah ada satu atau lebih OWNER aktif, operasi melalui function admin tidak boleh membuat jumlah OWNER aktif menjadi nol. Ini berlaku untuk penonaktifan maupun penurunan role dari `OWNER`.
+    -   Operasi yang tidak mengurangi jumlah OWNER aktif selalu boleh dilakukan: penonaktifan STAFF, provisioning, reaktivasi, perubahan role pada profil nonaktif, dan kenaikan role ke `OWNER`.
+-   **Urutan penguncian** di setiap function mutasi:
+    1.  `pg_advisory_xact_lock(1179795802, 29)` sebagai kunci pertama. Kunci ini dipakai bersama oleh semua function mutasi status dan role, dan dilepas otomatis saat transaksi selesai. Nilai `1179795802` adalah `0x4652415A` (ASCII "FRAZ") dan `29` merujuk OD-29. Pasangan kunci ini dicadangkan; kode lain tidak boleh memakainya.
+    2.  `SELECT … FOR UPDATE` pada baris profil target.
+    3.  Bila target adalah OWNER aktif dan operasi akan menonaktifkannya atau menurunkan role-nya: kunci semua baris OWNER aktif dengan `ORDER BY id FOR UPDATE`, lalu hitung OWNER aktif selain target. Bila hasilnya nol: `LAST_ACTIVE_OWNER`, tanpa perubahan.
+-   **Dua penonaktifan bersamaan:** transaksi kedua menunggu advisory lock sampai transaksi pertama commit atau rollback, lalu menghitung berdasarkan data yang sudah di-commit. Karena itu kedua operasi diproses berurutan di database.
+-   **Penonaktifan berulang:** setelah expected state cocok, jalur `ALREADY_DEACTIVATED` dipilih sebelum perlindungan OWNER, sehingga `deactivated_at` awal dipertahankan dan jumlah OWNER tidak terpengaruh.
+-   **Deadlock dan timeout:** karena semua function mutasi mengambil advisory lock lebih dulu, deadlock antar-function admin tidak terjadi. `lock_timeout` 5 detik membatasi waktu tunggu terhadap SQL lain yang memegang kunci. `55P03` atau `40P01` membatalkan seluruh transaksi; pengulangan dengan `operation_id` yang sama aman.
+-   **Batas jaminan:** SQL berhak tinggi yang langsung mengubah `profiles` tanpa function admin tidak mengambil advisory lock dan tidak memeriksa invariant, sehingga dapat menyisakan nol OWNER aktif. Perlindungan terhadap setiap perintah SQL berhak tinggi **tidak dijanjikan**. Lock database juga tidak mencakup langkah Auth Admin API setelah commit.
+-   Perlindungan ini baru dapat diklaim setelah uji konkurensi dua transaksi pada §14.5 lulus. **Terpenuhi di lokal** (7SUP.4B-3A, CONC-01 sampai CONC-05): sesi kedua teramati menunggu advisory lock, lalu ditolak `LAST_ACTIVE_OWNER` setelah sesi pertama commit. Uji ini dijalankan satu kali dengan satu urutan.
 
 ------------------------------------------------------------------------
 
@@ -1035,22 +1499,52 @@ Pemetaan kode error ke status HTTP dirinci di dokumentasi API (Gelombang 2b).
 -   Seluruh perubahan skema melalui file SQL migration yang disimpan di repository. Perubahan langsung lewat dashboard tanpa file migration tidak diperbolehkan. [KEPUTUSAN] (ADR-07)
 -   Alat migration adalah Supabase CLI dengan Supabase lokal di Docker; migration diuji di lingkungan lokal sebelum diterapkan ke project remote. [KEPUTUSAN] (ADR-10) Langkah teknis menjalankannya dirinci di dokumentasi environment (Gelombang 2b).
 -   Perilaku transaksi saat migration diterapkan harus diverifikasi sebelum migration pertama. Tidak diasumsikan bahwa setiap file migration berjalan sebagai satu transaksi. (ADR-10; test di §14.4)
+-   Hasil verifikasi lokal, 31 Oktober 2026 (STACK-DECISION-LOG ADR-13):
+    -   Metode: Supabase CLI 2.122.0, `supabase migration up --db-url`, diterapkan ke dua database PostgreSQL lokal sekali pakai pada instance Supabase lokal.
+    -   Uji kegagalan: satu file berisi pembuatan tabel uji, `INSERT` dengan input integer tidak valid, dan pembuatan tabel uji kedua. Perintah gagal dengan SQLSTATE `22P02`, kedua tabel uji tidak tertinggal, dan versi migration tidak tercatat.
+    -   Kontrol positif: file setara tanpa statement yang gagal berhasil diterapkan, kedua tabel ada, dan versinya tercatat.
+    -   Kedua database uji dihapus setelah pengujian. Snapshot katalog database `postgres` lokal utama tidak berubah.
+    -   Kesimpulan: satu file migration berisi DDL dan DML biasa yang diuji berjalan atomik bersama pencatatan versinya.
+-   Batas hasil verifikasi:
+    -   Atomicity antar-file tidak berlaku. Bila sebuah file gagal, file sebelumnya tetap diterapkan.
+    -   Statement yang memecah batch tidak diuji.
+    -   Perilaku `supabase db push` ke project cloud belum diuji.
+    -   Statement kontrol transaksi eksplisit berada di luar pola yang diverifikasi.
+    -   Tidak setiap file migration dapat dianggap atomik.
+-   Aturan migration biasa [KEPUTUSAN] (ADR-13):
+    -   DDL, RLS, policy, dan grant yang saling terkait ditulis bersama dalam satu file.
+    -   `BEGIN`, `COMMIT`, atau `ROLLBACK` eksplisit tidak dipakai tanpa tinjauan desain tersendiri.
+    -   `CREATE/DROP INDEX CONCURRENTLY`, `REINDEX … CONCURRENTLY`, `VACUUM`, `ALTER SYSTEM`, `CLUSTER`, dan operasi lain yang memecah batch tidak dicampur dengan migration bisnis biasa. Migration pengecualian ditangani di file terpisah dan ditinjau tersendiri.
 
 ## 14.2 Urutan Migrasi (rekomendasi)
 
-1.  Enum, tabel `profiles`, helper role, trigger `updated_at`.
-2.  `categories`, `materials` (tanpa FK `active_opname_id` terlebih dahulu), `material_status_events`.
+Setiap langkah yang membuat tabel juga mengaktifkan RLS dan menetapkan policy serta `GRANT`-nya dalam file yang sama. Setiap langkah yang membuat function juga menetapkan `EXECUTE`-nya. Karena itu tidak ada langkah RLS dan grant yang terpisah. [KEPUTUSAN] (ADR-13 D4)
+
+0.  Baseline keamanan: default-deny untuk objek yang dibuat role migration (D3), serta schema `app_private` beserta haknya (D2, D8). **Diterapkan di lokal** (`20261031084000_security_baseline.sql`; schema `app_private` dibuat di file langkah 1).
+1.  Enum, tabel `profiles` (termasuk `deactivated_at`), helper role di `app_private`, dan trigger `updated_at`. `session_valid_after` dan validasi sesi (§12.5) ditambahkan bersama helper, lalu langsung diuji di lokal (§14.5). **Diterapkan di lokal** (`20261031084100_profiles_authz_foundation.sql`) dan lulus uji integrasi lokal, sehingga tidak perlu dirancang ulang.
+    -   **Langkah 1a — prosedur admin siklus akun** (ADR-14): tabel `app_private.account_lifecycle_events` beserta RLS, revoke, dan trigger append-only (§4.11), serta function admin (§12.5.8). Ditulis sebagai migration aditif baru setelah langkah 1, tanpa mengubah dua migration yang sudah diterapkan. Di akhir file, blok pemeriksaan membatalkan seluruh migration bila `current_user` bukan `postgres`, bila `anon`, `authenticated`, atau `service_role` memiliki `EXECUTE` pada function admin atau hak pada tabel event, atau bila RLS `profiles` tidak aktif. Rollback dilakukan dengan migration maju baru; menghapus tabel event akan menghapus histori audit dan tidak disarankan. **Diterapkan di lokal** (`20261031163955_account_lifecycle_admin.sql`); blok pemeriksaan akhir lulus dan katalog serta privilege diverifikasi setelah penerapan.
+    -   **Langkah 1b — cutoff sesi pada perubahan role** (ADR-14 G1): migration aditif yang hanya mengganti `app_private.admin_set_role` dengan `create or replace` (signature, owner, ACL, `SECURITY INVOKER`, `search_path`, dan `lock_timeout` sama), tanpa mengubah migration sebelumnya. Blok pemeriksaan akhir membatalkan migration bila properti tersebut tidak sesuai atau bila role selain owner dapat mengeksekusinya. **Diterapkan di lokal** (`20261101044858_admin_role_change_session_cutoff.sql`, 7SUP.4B-3I); diff katalog sebelum dan sesudah penerapan hanya menunjukkan source function ini dan satu baris migration baru.
+2.  `categories`, `materials` (tanpa FK `active_opname_id` terlebih dahulu), dan `material_status_events`. Hak tulis langsung pada `categories` mengikuti OD-19.
 3.  `stock_opname`, `stock_opname_items`, lalu FK `materials.active_opname_id`.
 4.  `inventory_transactions` beserta CHECK dan unique index parsial.
-5.  `idempotency_requests`.
-6.  Database functions (§7).
-7.  RLS policies dan grants (§12).
-8.  View status stok operasional (§6.1).
-9.  Seed data sintetis (PRD NFR-04) dan profil akun melalui prosedur admin terkontrol (PRD FR-AUTH-02; ADR-11). Akun Auth dibuat developer; seed stok awal bergantung pada OD-17.
+5.  `app_private.idempotency_requests`.
+6.  Database functions (§7): wrapper di `public` dan implementasi di `app_private`.
+7.  View status stok operasional dengan `security_invoker = true` (§6.1).
+8.  Seed data sintetis (PRD NFR-04) dan profil akun melalui prosedur admin terkontrol (PRD FR-AUTH-02; ADR-11). Akun Auth dibuat developer; seed stok awal bergantung pada OD-17.
 
-Urutan ini menghindari FK yang merujuk tabel yang belum ada; pada tahap implementasi migration dapat digabung atau dipecah selama dependensinya terjaga.
+**Status langkah 2–8** (1 November 2026, 7SUP.5A-2):
 
-Catatan Owner (§4.10) hanya bergantung pada `profiles`, sehingga dapat dibuat setelah langkah 1 setelah OD-22, OD-23, dan OD-25 diputuskan. Usulan perubahan urutan terkait default privileges dan RLS tercatat di §12.4 dan belum disetujui.
+-   Langkah 2–7 **diterapkan di lokal** dalam satu migration aditif, `20261101064015_inventory_stock_movement_foundation.sql`.
+    -   Langkah 3 hanya berupa skema, tanpa function penulis.
+    -   Langkah 6 baru mencakup `post_stock_movement`.
+    -   Blok pemeriksaan akhir migration lulus. Diff katalog hanya menunjukkan penambahan.
+-   Langkah 8 belum berupa file seed. Data demo lokal disiapkan melalui sesi SQL tepercaya dan `admin_provision_profile`:
+    -   Dua akun, dua kategori `[DEMO]`, dan tiga material `[DEMO]`.
+    -   Saldo stok dari transaksi uji, bukan dari `OPENING_BALANCE`.
+
+Urutan ini menghindari FK yang merujuk tabel yang belum ada. Pada tahap implementasi migration dapat digabung atau dipecah selama dependensinya terjaga dan aturan §14.1 dipenuhi.
+
+Catatan Owner (§4.10) hanya bergantung pada `profiles`, sehingga dapat dibuat setelah langkah 1 setelah OD-22, OD-23, dan OD-25 diputuskan.
 
 ## 14.3 Rekonsiliasi
 
@@ -1066,7 +1560,7 @@ Pemeriksaan baca yang dapat dijalankan kapan saja dan dalam test. Hasil yang dih
 
 ## 14.4 Rencana Pengujian
 
-Belum ada test yang dibuat. Bentuk dan alat test ditentukan di dokumentasi Development Task (Gelombang 2b).
+Selain uji atomicity migration (§14.1), uji yang sudah dijalankan adalah harness integrasi per checkpoint di Supabase lokal (7SUP.5A-2 untuk database, 7SUP.5A-3 untuk HTTP melalui Next.js). Harness tersebut belum disimpan di repository sebagai test suite. Hasil per skenario yang relevan dirangkum di §15, "Pembaruan 1 November 2026 (7SUP.5A-2 dan 7SUP.5A-3)". Bentuk dan alat test permanen ditentukan di dokumentasi Development Task (Gelombang 2b).
 
 Kode error yang muncul di kolom hasil, misalnya `MATERIAL_FROZEN`, `IDEMPOTENCY_KEY_REUSED`, dan `OPNAME_INVARIANT_VIOLATION`, adalah kode usulan yang bersifat indikatif, sama seperti di §7. Nama kode final, pesan error, dan pemetaan status HTTP belum ditetapkan dan diputuskan melalui dokumentasi API (Gelombang 2b). Yang wajib diuji adalah hasil bisnisnya, misalnya operasi ditolak, transaksi dibatalkan seluruhnya, atau data tidak berubah. Belum finalnya nama kode tidak membuat aturan bisnis yang diuji menjadi opsional.
 
@@ -1112,8 +1606,15 @@ Kode error yang muncul di kolom hasil, misalnya `MATERIAL_FROZEN`, `IDEMPOTENCY_
 | Otorisasi | Pengguna Auth tanpa profil membaca data atau memanggil RPC, termasuk Catatan Owner | Ditolak atau tidak ada baris |
 | Otorisasi | Pemanggilan RPC langsung, tanpa Route Handler, oleh role yang tidak berwenang | Ditolak oleh function privat |
 | Otorisasi | Function di schema privat dipanggil melalui Data API | Tidak dapat dijangkau |
-| Akun | Akun yang dinonaktifkan mengakses fitur bisnis | Ditolak; profil dan histori tetap ada. Mekanisme mengikuti OD-29 |
-| Migration | Migration dengan error yang disengaja di tengah file diterapkan ke database lokal | Tidak ada objek parsial yang tertinggal; bila tidak terpenuhi, prosedur migration disesuaikan sebelum migration pertama |
+| Akun | Akun yang dinonaktifkan mengakses fitur bisnis | Ditolak; profil dan histori tetap ada. Mekanisme mengikuti ADR-13 (D9); rincian uji di §14.5 |
+| Akun | Pengguna dinonaktifkan (`deactivated_at` terisi) memakai access token yang masih berlaku untuk membaca tabel atau memanggil RPC | Ditolak atau tidak ada baris, tanpa menunggu token kedaluwarsa |
+| Akun | Pengguna mengubah `deactivated_at` miliknya sendiri | Ditolak |
+| Migration | Migration dengan error yang disengaja di tengah file diterapkan ke database lokal | Tidak ada objek parsial yang tertinggal. **Terverifikasi 31 Oktober 2026** untuk DDL dan DML biasa dengan Supabase CLI 2.122.0 (§14.1) |
+| Privilege | Default ACL setelah migration baseline | Objek baru milik role migration tidak memberi hak otomatis kepada `anon`, `authenticated`, maupun `service_role`, dan function baru tidak dapat dieksekusi `PUBLIC` |
+| Privilege | Tabel aplikasi di `public` setelah setiap migration | RLS aktif di seluruh tabel; tidak ada hak untuk `anon` |
+| Privilege | Function `SECURITY DEFINER` di `app_private` | `search_path` kosong; pemilik tercatat; tidak dapat dijangkau melalui Data API |
+| Privilege | `idempotency_requests` diakses melalui Data API | Tidak dapat dijangkau |
+| Privilege | View status stok dibaca `anon` atau pengguna tanpa profil aktif | Ditolak atau tidak ada baris (`security_invoker = true`) |
 | Catatan Owner | Staff Warehouse membuat, mengubah isi, atau menghapus catatan, atau menandai "Sudah Ditinjau" | Ditolak |
 | Catatan Owner | Owner menandai catatan selesai atau menulis feedback | Ditolak |
 | Catatan Owner | Owner menandai "Sudah Ditinjau" pada catatan belum selesai | Ditolak |
@@ -1143,7 +1644,72 @@ Kode error yang muncul di kolom hasil, misalnya `MATERIAL_FROZEN`, `IDEMPOTENCY_
 | Catatan Owner | Identitas pembuat dikirim sebagai parameter dari klien | Tidak dipakai; pembuat berasal dari `auth.uid()` |
 | Catatan Owner | Kegagalan di tengah pembuatan catatan | Tidak ada catatan maupun baris idempotency yang tertinggal |
 | Catatan Owner | RPC `create_note` dipanggil langsung tanpa Route Handler | Validasi role, key, dan identitas tetap berlaku |
-| Catatan Owner | Replay oleh pengguna yang role atau profilnya tidak lagi valid | Ditolak; hasil tersimpan tidak dikembalikan. Akun yang dinonaktifkan mengikuti OD-29 |
+| Catatan Owner | Replay oleh pengguna yang role atau profilnya tidak lagi valid | Ditolak; hasil tersimpan tidak dikembalikan. Termasuk akun yang dinonaktifkan (ADR-13 D9) |
+
+## 14.5 Uji Penerimaan Penonaktifan, Reaktivasi, dan Sesi (OD-29)
+
+Ketentuan pelaksanaan:
+
+-   Seluruh uji dijalankan di Supabase lokal dengan akun uji sekali pakai pada checkpoint pengujian yang disetujui terpisah.
+-   Bukti yang dikumpulkan tidak mencetak token, password, maupun secret key.
+-   Setiap jalur akses diuji: SELECT dan tulis langsung melalui Data API, view, wrapper RPC, implementasi privat (harus tidak terjangkau), dan Route Handler. Sejak 7SUP.5A-2 dan 7SUP.5A-3, tabel inventori, view, RPC, dan Route Handler tersedia di lokal. Status per jalur tercatat pada baris terkait.
+-   Uji integrasi lokal 31 Oktober 2026 memakai akun Auth asli dan mencakup jalur `profiles` saja: 27 dari 27 assertion lulus untuk akses per role (7SUP.4A-R2), dan 34 dari 34 untuk penonaktifan, ban, cutoff sesi, refresh, dan logout (7SUP.4B-1). Perubahan status pada uji tersebut dilakukan dengan SQL langsung sebagai `postgres`, karena function admin belum ada.
+-   Uji lanjutan setelah migration admin diterapkan (setiap run dilaporkan terpisah; hasilnya tidak digabung):
+    -   7SUP.4B-2C: penerapan migration, katalog, privilege efektif, dan 24 probe penolakan `SET ROLE`. Lulus.
+    -   7SUP.4B-3A: function admin dengan tiga akun uji. 84 dari 85 assertion dijalankan dan seluruhnya lulus; satu tidak dijalankan pada run itu.
+    -   7SUP.4B-3B, run pertama: **INCONCLUSIVE** karena kesalahan pembanding di harness. 17 dari 45 assertion dijalankan, 16 lulus.
+    -   7SUP.4B-3B-R2: uji terarah urutan Auth/database. 29 dari 29 assertion target, 11 dari 11 setup, dan 1 dari 1 cleanup lulus.
+    -   7SUP.4B-3D: uji #19 dan #20. Lulus dengan catatan.
+    -   7SUP.4B-3I: migration G1 diterapkan, lalu uji #21, #27, #31, dan #40 dengan tiga akun uji (A OWNER, B target perubahan role, C tanpa profil). 6 dari 6 setup, 30 dari 30 target, dan 1 dari 1 cleanup lulus.
+-   Kode assertion pada kolom status (misalnya `DEAC-02N`) merujuk ke assertion pada checkpoint yang disebut.
+-   Status "Lulus (lokal)" hanya berlaku untuk jalur dan versi yang diuji (Supabase CLI 2.122.0, PostgreSQL 17.11, Supabase Auth v2.197.0). Status ini bukan klaim untuk project cloud.
+
+| # | Skenario | Hasil yang diharapkan | Bukti | Status (1 November 2026) |
+|---|---|---|---|---|
+| 1 | OWNER aktif membaca data bisnis dan memakai hak Catatan Owner | Diizinkan sesuai role; tulis inventori ditolak | Status respons dan jumlah baris | Sebagian (lokal): baca profil sendiri lulus (7SUP.4A-R2; 7SUP.4B-3A `SESS-06`; 7SUP.4B-3B-R2 `SET-05`). Baca data inventori lulus (7SUP.5A-2 `RD-01`, `HIS-02`; 7SUP.5A-3 `READ-02`). Tulis inventori ditolak `FORBIDDEN` (7SUP.5A-2 `SEC-02`, `ACC-05`; 7SUP.5A-3 `WRITE-01`). Catatan Owner belum ada |
+| 2 | STAFF_WAREHOUSE aktif menjalankan operasi inventori melalui RPC | Diizinkan; invariant stok terjaga | Respons RPC; rekonsiliasi §14.3 | Sebagian (lokal): `post_stock_movement` untuk `STOCK_IN` dan `STOCK_OUT` lulus, rekonsiliasi tanpa pelanggaran (7SUP.5A-2 `FN-01`..`FN-03`, `CON-01`..`CON-03`, `REC-01`; 7SUP.5A-3 `E2E-01`..`E2E-04`, `REC-01`). Koreksi dan Stock Opname belum ada |
+| 3 | Pengguna Auth tanpa profil | Ditolak atau tidak ada baris di semua jalur | Status respons; nol baris | Sebagian: jalur `profiles` lulus (lokal: 7SUP.4A-R2 `noprof-1`..`noprof-4`; sesi sebelum provisioning, 7SUP.4B-3A `SESS-02`) |
+| 4 | Akun dinonaktifkan memakai access token yang terbit sebelum penonaktifan | Ditolak di semua jalur pada request pertama setelah commit penonaktifan | Status respons; waktu commit dibandingkan waktu request | Sebagian: jalur `profiles` lulus (lokal), dengan penonaktifan melalui SQL langsung (7SUP.4B-1) dan melalui function admin (7SUP.4B-3A `DEAC-02`; 7SUP.4B-3B-R2 `SET-09`) |
+| 5 | SELECT langsung melalui Data API ke tabel dan view oleh akun nonaktif | Nol baris atau ditolak | Jumlah baris | Sebagian: `profiles` lulus (lokal), berupa HTTP 200 dengan nol baris. Tabel inventori dan view `material_stock_status` mengembalikan nol baris di level SQL, dengan klaim sesi asli dan penonaktifan dalam transaksi ROLLBACK (7SUP.5A-2 `ACC-03`). Data API dengan penonaktifan yang di-commit belum diuji |
+| 6 | Pemanggilan RPC langsung, tanpa Route Handler, oleh akun nonaktif | Ditolak oleh implementasi privat; data tidak berubah | Kode error; snapshot data sebelum dan sesudah | Sebagian: wrapper ditolak `UNAUTHORIZED`, termasuk replay key yang sudah di-commit, tanpa perubahan data. Diuji di level SQL dengan klaim sesi asli dan penonaktifan dalam transaksi ROLLBACK (7SUP.5A-2 `ACC-01`, `ACC-02`). Data API dengan penonaktifan yang di-commit belum diuji |
+| 7 | Penonaktifan diulang untuk akun yang sudah nonaktif | Tidak ada perubahan; `deactivated_at` awal dipertahankan | Nilai kolom sebelum dan sesudah | Lulus (lokal): `ALREADY_DEACTIVATED`, `deactivated_at` awal dan `updated_at` tidak berubah (7SUP.4B-3A `DEAC-02N`) |
+| 8 | Langkah database penonaktifan berhasil tetapi ban Auth gagal (disimulasikan) | Akses bisnis tetap ditolak; status `DEACTIVATION_PENDING_AUTH`; pengulangan langkah Auth berhasil | Status database; `banned_until` setelah pengulangan | Sebagian: kegagalan Auth **terkendali** lulus (lokal; 7SUP.4B-3B-R2 `BADBAN-01`/`02`): request ban tidak valid ditolak HTTP 400 `validation_failed`, `banned_until` dan `updated_at` tidak berubah, database tetap menolak akses, lalu ban berikutnya berhasil (`BAN-01`). Gangguan layanan Auth atau jaringan yang nyata belum diuji |
+| 9 | Ban Auth dicabut tetapi langkah database reaktivasi gagal (disimulasikan) | Akses bisnis tetap ditolak; status `REACTIVATION_PENDING_DB` | Status respons; nilai kolom | Sebagian: penolakan setelah ban dicabut dan sebelum reaktivasi lulus (lokal; 7SUP.4B-1; 7SUP.4B-3B-R2 `UNBAN-02`/`03`). Penolakan langkah database yang **terkendali** lulus (`STALE-01`: `STATE_CONFLICT`, akses tetap ditolak). Kegagalan infrastruktur langkah database dan kompensasi ban ulang belum diuji |
+| 10 | Access token lama dipakai segera setelah reaktivasi | Ditolak (sesi dibuat sebelum `session_valid_after`) | Status respons | Lulus (lokal), jalur `profiles` (7SUP.4B-1; 7SUP.4B-3A `REAC-02`; 7SUP.4B-3B-R2 `REAC-02`) |
+| 11 | Refresh token lama atau sesi lama dipakai setelah reaktivasi | Auth menerbitkan token baru, tetapi akses bisnis tetap ditolak database | Status refresh; status respons bisnis | Lulus (lokal), jalur `profiles`: refresh sesi lama berhasil (HTTP 200, `session_id` sama), akses tetap ditolak (7SUP.4B-1; 7SUP.4B-3A `REAC-03`; 7SUP.4B-3B-R2 `REAC-03`) |
+| 12 | Login baru setelah reaktivasi | Diizinkan sesuai role | Status respons | Lulus (lokal), jalur `profiles` (7SUP.4B-1; 7SUP.4B-3A `REAC-04`; 7SUP.4B-3B-R2 `REAC-04`, `INC-06`) |
+| 13 | Klaim `session_id` hilang, bukan UUID, merujuk sesi milik pengguna lain, atau merujuk sesi yang sudah dihapus | Ditolak tanpa error yang tidak tertangani | Status respons; log database | Sebagian: sesi yang dihapus melalui logout ditolak (lokal); klaim lain diuji dengan simulasi klaim, bukan JWT asli |
+| 14 | Pengguna mencoba mereaktivasi atau menonaktifkan diri sendiri melalui Data API atau RPC | Ditolak; tidak ada grant maupun function yang dapat dipakai | Status respons; nilai kolom tidak berubah | Lulus (lokal) untuk jalur yang ada: tulis langsung ke `profiles` ditolak `42501` (7SUP.4A-R2); function admin tidak dapat dieksekusi role API (7SUP.4B-2C) dan tidak terjangkau melalui Data API (#19). RPC bisnis belum ada |
+| 15 | Penonaktifan, atau perubahan role, OWNER aktif terakhir, termasuk dua upaya bersamaan terhadap dua OWNER (dua sesi SQL; transaksi kedua harus menunggu advisory lock, lalu ditolak `LAST_ACTIVE_OWNER` setelah transaksi pertama commit) | Ditolak; minimal satu OWNER aktif tersisa | Hasil function; jumlah OWNER aktif; status tunggu di `pg_stat_activity` dan `pg_locks` | Lulus (lokal): `LAST_ACTIVE_OWNER` untuk penonaktifan dan demosi (7SUP.4B-3A `OWN-N01`/`N02`); dua sesi bersamaan, waiter advisory lock teramati, yang kalah ditolak setelah commit (`CONC-01`..`05`). Satu run, satu urutan |
+| 16 | Integritas setelah seluruh skenario | Profil, `profiles.id`, role, dan rujukan audit transaksi utuh; rekonsiliasi §14.3 tanpa pelanggaran | Query rekonsiliasi | Sebagian: integritas `profiles`, migration, dan cleanup akun uji lulus di setiap checkpoint (lokal); rekonsiliasi stok belum ada |
+| 17 | `auth.audit_log_entries` setelah ban dan pencabutan ban | Tindakan admin tercatat | Baris log audit (tanpa data rahasia) | Sebagian: ban dan pencabutan ban sama-sama tercatat sebagai `user_modified` tanpa pembeda (lokal). Setiap ban atau pencabutan ban yang berhasil menambah satu entri, sedangkan request yang tidak valid tidak menambah entri (7SUP.4B-3B-R2 `AUD-04`). Jejak database mengikuti ADR-14 (#26) |
+| 18 | Uji 10, 11, dan 13 diulang setelah peningkatan versi Supabase CLI atau Auth | Hasil sama; bila tidak, helper menolak (fail-closed) dan desain ditinjau ulang | Hasil uji per versi | Belum ada peningkatan versi |
+| 19 | Function admin dipanggil oleh `anon`, `authenticated`, atau `service_role` melalui `SET ROLE` maupun Data API | `42501` atau `PGRST106`; tidak ada perubahan | Kode error; snapshot | Lulus (lokal; 7SUP.4B-2C dan 7SUP.4B-3D): `SET ROLE` ke `anon`, `authenticated`, dan `service_role` menghasilkan `42501` (24 probe). Melalui HTTP dengan kredensial `anon` dan `service_role`: `Accept-Profile: app_private` ditolak HTTP 406 `PGRST106`; pencarian RPC di `public` HTTP 404 `PGRST202`; pencarian tabel di `public` HTTP 404 `PGRST205`. Berdasarkan pengaturan eksposur PostgREST yang terpasang (`PGRST_DB_SCHEMAS=public,graphql_public`) |
+| 20 | Function admin dipanggil oleh role lain yang sengaja diberi `EXECUTE` di dalam transaksi yang di-rollback | `UNTRUSTED_CONTEXT`; tidak ada perubahan | Kode error | Lulus (lokal; 7SUP.4B-3D): `EXECUTE` sementara diberikan kepada `authenticated` dalam satu transaksi yang diakhiri `ROLLBACK` eksplisit; `authenticated` ditolak `P0001 UNTRUSTED_CONTEXT`; klaim JWT role palsu tidak menimpa role SQL saat ini. Transaksi berstatus `aborted` dan privilege identik dengan sebelum uji, diperiksa dari koneksi baru. Catatan: kueri kontrol positif semula gagal karena kesalahan harness; kontrol tersebut kemudian lulus di transaksi read-only terpisah |
+| 21 | Setiap kode error §12.5.8 dipicu pada kondisinya | Kode `P0001` yang tepat; tidak ada perubahan database parsial | Kode error; snapshot sebelum dan sesudah | Sebagian (lokal): `UNTRUSTED_CONTEXT`, `INVALID_ARGUMENT`, `LAST_ACTIVE_OWNER`, `STATE_CONFLICT`, `OPERATION_ID_CONFLICT` (7SUP.4B-2C, 7SUP.4B-3A), dan `AUTH_STILL_BANNED` pada reaktivasi (7SUP.4B-3B-R2 `GUARD-01`) lulus tanpa perubahan parsial. `PROFILE_NOT_FOUND` untuk penonaktifan, reaktivasi, dan perubahan role (7SUP.4B-3I `T21-01`..`03`) serta `AUTH_STILL_BANNED` pada provisioning (7SUP.4B-3I `T27-03`) lulus tanpa perubahan maupun event. Dengan ini ketujuh kode sudah dipicu di lokal. Tetap **Sebagian** karena satu kondisi tabel kode, yaitu `STATE_CONFLICT` untuk email belum terkonfirmasi, hanya punya bukti dari run yang INCONCLUSIVE (#27) |
+| 22 | Pengulangan dengan `operation_id` yang sama setelah commit, termasuk setelah akun direaktivasi oleh operasi lain | Hasil tercatat dikembalikan dengan `replayed = true`; status tidak berubah; tidak ada event baru | Kembalian function; jumlah event; nilai kolom | Lulus (lokal): replay setelah commit, termasuk setelah reaktivasi oleh operasi lain (7SUP.4B-3A `DEAC-R03`, `REAC-R01`, `ROLE-R02`) |
+| 23 | `operation_id` dipakai untuk aksi atau target lain | `OPERATION_ID_CONFLICT`; tidak ada perubahan | Kode error | Lulus (lokal; 7SUP.4B-3A `PROV-C03`/`C04`, `DEAC-C04`/`C05`) |
+| 24 | Perintah penonaktifan usang (`p_expected_session_valid_after` lama) setelah reaktivasi; reaktivasi dengan `p_expected_deactivated_at` lama atau bukan NULL untuk akun yang sudah aktif; perubahan role dengan `p_expected_role` lama | `STATE_CONFLICT`; tidak ada perubahan | Kode error; nilai kolom | Lulus (lokal; 7SUP.4B-3A `DEAC-N03`, `REAC-N01`/`N03`, `ROLE-N01`/`N02`; 7SUP.4B-3B-R2 `STALE-01`) |
+| 25 | Reaktivasi saat ban aktif; reaktivasi dengan `operation_id` baru dan `p_expected_deactivated_at` NULL untuk akun aktif | `AUTH_STILL_BANNED`; `ALREADY_ACTIVE` tanpa memajukan `session_valid_after` | Kode error; nilai kolom | Lulus (lokal): `AUTH_STILL_BANNED` (7SUP.4B-3B-R2 `GUARD-01`); `ALREADY_ACTIVE` tanpa memajukan cutoff (7SUP.4B-3A `REAC-NOOP`) |
+| 26 | Rekonstruksi audit: event database, runbook, dan `auth.audit_log_entries` dihubungkan melalui `operation_id`; tabel event menolak `UPDATE`, `DELETE`, dan `TRUNCATE` biasa; penolakan tidak menulis event | Setiap perubahan status dan role melalui function admin memiliki tepat satu event | Baris event; catatan runbook | Lulus (lokal): satu event per operasi sukses, tanpa event untuk penolakan maupun replay; `UPDATE`, `DELETE`, dan `TRUNCATE` ditolak `55000 APPEND_ONLY` (7SUP.4B-3A `AUD-01`..`07`; 7SUP.4B-3B-R2 `AUD-01`..`05`). Korelasi dengan `auth.audit_log_entries` hanya melalui runbook privat, bukan relasi atomik di database |
+| 27 | Provisioning: akun Auth tidak ada, email tidak cocok, email belum terkonfirmasi, ban aktif, atau profil sudah ada; provisioning sukses | Ditolak dengan kode yang tepat; setelah sukses, sesi yang dibuat sebelum provisioning ditolak dan login baru diterima | Kode error; status respons | Sebagian (lokal): akun Auth tidak ada dan email tidak cocok ditolak (7SUP.4B-3A `PROV-N01`/`N02`); profil sudah ada ditolak (`PROV-N09`); email belum terkonfirmasi ditolak `STATE_CONFLICT` (7SUP.4B-3B run pertama `UNC-02`, run secara keseluruhan INCONCLUSIVE); setelah sukses, sesi sebelum provisioning ditolak dan login baru diterima (7SUP.4B-3A `PROV-04`, `SESS-03`..`05`). Ban aktif saat provisioning lulus (7SUP.4B-3I `T27-01`..`03`): akun Auth terkonfirmasi tanpa profil diberi tepat satu ban `876000h`, lalu provisioning ditolak `P0001 AUTH_STILL_BANNED` tanpa profil maupun event. Tetap **Sebagian** karena uji email belum terkonfirmasi hanya lulus dalam run yang secara keseluruhan INCONCLUSIVE |
+| 28 | `operation_id` sama dengan input identik (pengulangan setelah commit) | Hasil historis dengan `replayed = true`; profil tidak berubah; jumlah event tetap | Kembalian function; jumlah event; snapshot profil | Lulus (lokal; 7SUP.4B-3A `PROV-R01`/`R02`, `DEAC-R01`, `REAC-R01`, `ROLE-R01`) |
+| 29 | `operation_id` sama, `p_expected_email` berbeda (provisioning) | `OPERATION_ID_CONFLICT`; tidak ada perubahan | Kode error; snapshot | Lulus (lokal; 7SUP.4B-3A `PROV-C01`) |
+| 30 | `operation_id` sama, `p_name` berbeda (provisioning) | `OPERATION_ID_CONFLICT`; tidak ada perubahan | Kode error; snapshot | Lulus (lokal; 7SUP.4B-3A `PROV-C02`) |
+| 31 | `operation_id` sama, expected state berbeda (`p_expected_session_valid_after`, `p_expected_deactivated_at`, atau `p_expected_role`) | `OPERATION_ID_CONFLICT`; tidak ada perubahan | Kode error; snapshot | Lulus (lokal): `p_expected_session_valid_after` dan `p_expected_deactivated_at` (7SUP.4B-3A `DEAC-C01`, `REAC-C01`); `p_expected_role` (7SUP.4B-3I `T31-01`: `operation_id` dari `NOOP` STAFF→STAFF dipakai ulang dengan expected role OWNER, ditolak `P0001 OPERATION_ID_CONFLICT`; profil, cutoff, state, dan event tidak berubah) |
+| 32 | `operation_id` sama, `actor` atau `reason` berbeda | `OPERATION_ID_CONFLICT`; tidak ada perubahan | Kode error; snapshot | Lulus (lokal; 7SUP.4B-3A `DEAC-C02`/`C03`) |
+| 33 | `operation_id` sama, aksi atau target berbeda | `OPERATION_ID_CONFLICT`; tidak ada perubahan | Kode error; snapshot | Lulus (lokal; 7SUP.4B-3A `PROV-C03`/`C04`, `DEAC-C04`/`C05`) |
+| 34 | Timestamp expected yang sama dikirim dalam zona waktu berbeda, atau dari sesi dengan setting `TimeZone` berbeda | Fingerprint identik; pengulangan dianggap replay | Nilai fingerprint; kembalian function | Lulus (lokal; 7SUP.4B-3A `DEAC-R02`, expected ditulis `+07:00`) |
+| 35 | Timestamp expected yang berbeda, termasuk selisih satu mikrodetik | Fingerprint berbeda; `OPERATION_ID_CONFLICT` bila `operation_id` sama | Nilai fingerprint; kode error | Lulus (lokal; 7SUP.4B-3A `DEAC-C01`, `REAC-C01`) |
+| 36 | Pengulangan penonaktifan yang sudah selesai setelah reaktivasi yang lebih baru, dengan `operation_id` dan input sama | Replay hasil historis; akun tetap aktif; tidak ada mutasi maupun event baru | Kembalian function; nilai kolom; jumlah event | Lulus (lokal; 7SUP.4B-3A `DEAC-R03`) |
+| 37 | `p_expected_role` usang, padahal role saat ini sudah sama dengan `p_new_role` | `STATE_CONFLICT`, bukan `ROLE_UNCHANGED` | Kode error | Lulus (lokal; 7SUP.4B-3A `ROLE-N01`) |
+| 38 | `ROLE_UNCHANGED` yang sah: expected role cocok dan sama dengan role baru, `operation_id` baru | Profil tidak di-`UPDATE` (`updated_at` tidak berubah); satu event `NOOP` | Nilai kolom; jumlah event | Lulus (lokal; 7SUP.4B-3A `ROLE-NOOP`) |
+| 39 | Reaktivasi akun yang sudah aktif dengan `p_expected_deactivated_at` NULL yang cocok, `operation_id` baru | `ALREADY_ACTIVE`; `session_valid_after` tidak berubah; satu event `NOOP` | Nilai kolom; jumlah event | Lulus (lokal; 7SUP.4B-3A `REAC-NOOP`) |
+| 40 | Regresi G1 (ADR-14, disetujui 1 November 2026) setelah migration aditif: perubahan role `APPLIED` ke kedua arah (`STAFF_WAREHOUSE → OWNER`, `OWNER → STAFF_WAREHOUSE`); `NOOP` dan replay | Sesi dan refresh token yang dibuat sebelum perubahan ditolak; login baru diterima dengan role baru; `NOOP` dan replay tidak memajukan `session_valid_after` dan replay tidak menulis event baru; event `APPLIED` mencatat `old_session_valid_after` dan `new_session_valid_after` yang berbeda; sesi pengguna lain tidak terpengaruh | Status respons; nilai kolom; jumlah event | Lulus (lokal; 7SUP.4B-3I, migration `20261101044858`): promosi dan demosi `ROLE_CHANGED`/`APPLIED` dengan cutoff maju (`PRO-01`, `DEM-02`); JWT lama ditolak (`PRO-03`, `DEM-04`); refresh sesi lama berhasil di Auth (HTTP 200, `session_id` sama) tetapi tanpa akses profil (`PRO-04`, `DEM-05`); login baru diterima dengan role baru (`PRO-05`, `DEM-06`); `NOOP` dan replay tidak memajukan cutoff, replay tanpa event (`NOOP-01`/`02`, `REP-01`); event mencatat role dan cutoff lama/baru (`PRO-02`, `DEM-03`, `AUD-04`); OWNER lain tidak terpengaruh (`PRO-06`, `DEM-07`). Juga `STATE_CONFLICT` untuk cutoff usang (`EXP-01`) dan `LAST_ACTIVE_OWNER` (`GRD-01`). Belum diuji: login yang bersamaan dengan transaksi perubahan role, serta cloud |
+
+Mode pengujian untuk uji 7 dan 15–40: kasus satu sesi dijalankan dalam transaksi yang di-rollback di atas fixture akun Auth sekali pakai, karena `profiles` merujuk `auth.users`. Pelaksanaan nyata (7SUP.4B-3A, 7SUP.4B-3B-R2, dan 7SUP.4B-3I) memakai operasi yang di-commit pada akun Auth sekali pakai, diikuti cleanup terverifikasi yang hanya menghapus akun dan profil uji; event audit dipertahankan. Uji #20 memakai transaksi yang di-rollback. Uji konkurensi memakai dua sesi SQL dengan fixture yang sudah di-commit. Uji yang melibatkan Auth API, sesi, atau refresh memakai akun Auth asli sekali pakai. Kegagalan Auth disimulasikan tanpa mematikan layanan, misalnya dengan key admin yang sengaja tidak valid. Cleanup hanya menghapus akun Auth dan profil uji yang diotorisasi; event audit dipertahankan (ADR-14 J11).
+
+OD-29 baru dapat ditutup setelah seluruh uji di atas diimplementasikan dan lulus.
 
 ------------------------------------------------------------------------
 
@@ -1162,7 +1728,7 @@ Rekomendasi rinci tercatat di PRD kanonik dan STACK-DECISION-LOG. Status di bawa
 | OD-15 | Library dan platform | **Diputuskan** (STACK-DECISION-LOG ADR-12) | Tidak berdampak pada skema |
 | OD-16 | Staff lain memposting sesi | Terbuka | Pemeriksaan kewenangan di `post_stock_opname`; `posted_by` tersedia |
 | OD-17 | Aturan `OPENING_BALANCE` | Terbuka | Syarat tanda, keunikan per material, function pencatatan, koreksi, idempotency, dan pembekuan untuk tipe ini |
-| OD-18 | Pola pembacaan data server-side | Terbuka | Tidak mengubah skema; RLS SELECT berlaku untuk jalur baca mana pun |
+| OD-18 | Pola pembacaan data server-side | **Diputuskan** (STACK-DECISION-LOG ADR-15): Pilihan C | Tidak mengubah skema; RLS SELECT berlaku untuk jalur baca mana pun. Route Handler membaca dengan sesi pengguna |
 | OD-19 | Normalisasi spasi nama kategori dan material | Terbuka | Pilihan penegakan di §4.2 (validasi saja, CHECK, atau seluruh tulis lewat function); jika lewat function, penulisan kategori pindah ke function (§7.2, §12.2). Unique index `lower(name)` tetap wajib apa pun hasilnya |
 | OD-20 | Idempotency untuk `create_stock_opname` | Terbuka | Apakah operasi ini memakai `idempotency_requests` (§9.1); tanpa itu, request ulang dapat menghasilkan sesi kosong tambahan yang hanya dapat dibatalkan |
 | OD-21 | Kewajiban dan waktu pengisian feedback Catatan Owner | Terbuka | Pemeriksaan di `complete_note` dan `save_note_feedback` |
@@ -1173,8 +1739,100 @@ Rekomendasi rinci tercatat di PRD kanonik dan STACK-DECISION-LOG. Status di bawa
 | OD-26 | Pembatalan checklist "Selesai" | Terbuka | Ada tidaknya operasi pengosongan data penyelesaian dan syaratnya |
 | OD-27 | Akses Staff Warehouse ke Riwayat Catatan | Terbuka | Policy SELECT untuk catatan di luar daftar aktif |
 | OD-28 | Hak baca profil pengguna lain | Terbuka | Policy SELECT `profiles` atau cara lain menampilkan nama pelaku; berdampak pada histori transaksi dan Catatan Owner |
-| OD-29 | Penonaktifan akun dan penanganan sesi aktif | Terbuka | Perlu tidaknya penanda status akun di `profiles` dan pemeriksaannya, atau pemakaian fitur Supabase Auth; belum dirancang |
+| OD-29 | Penonaktifan akun dan penanganan sesi aktif | **Terbuka.** Fondasi keamanan profil dan sesi, function admin, perlindungan OWNER aktif terakhir, audit siklus akun, urutan Auth/database, batas eksposur Data API, dan penjaga konteks tepercaya diimplementasikan dan lulus uji di lokal (§14.5). Kebijakan G1–G3, termasuk runbook manual satu operator, disetujui 1 November 2026 (STACK-DECISION-LOG ADR-14). G1 diimplementasikan dan lulus uji terarah di lokal (§12.5.6, §14.5 #40; 7SUP.4B-3I). Masih terbuka: uji §14.5 yang belum lengkap (#1–#6, #8, #9, #13, #16–#18, #21, #27); login yang bersamaan dengan transaksi perubahan role; validasi khusus produksi dan cloud; penolakan akun nonaktif dan cutoff G1 dengan status yang di-commit melalui Data API dan API Next.js untuk tabel bisnis dan RPC (sejauh ini diuji di level SQL dengan transaksi ROLLBACK, 7SUP.5A-2) | `profiles.deactivated_at` dan `profiles.session_valid_after` dengan validasi `session_id`, function admin, dan `app_private.account_lifecycle_events` (§4.11, §12.5.8), semuanya diterapkan di lokal. Ditutup setelah seluruh uji §14.5 lulus |
 
 Keputusan A–F, termasuk penutupan OD-11 dan pencatatan OD-19 serta OD-20 sebagai keputusan terbuka, telah disinkronkan ke PRD kanonik (bagian Inventaris Keputusan dan requirement yang dipetakan di blok Keputusan Desain Database). Rincian teknis penegakan aturan tetap berada di dokumen ini.
 
 Pembaruan 30 Oktober 2026: ADR-09 sampai ADR-11 dan konsep Catatan Owner disinkronkan dari STACK-DECISION-LOG dan PRD kanonik; OD-21 sampai OD-29 dicatat sebagai keputusan terbuka. OD-15 diputuskan melalui STACK-DECISION-LOG ADR-12; tidak ada perubahan skema.
+
+Pembaruan 31 Oktober 2026: baseline keamanan database disinkronkan dari STACK-DECISION-LOG ADR-13. Perubahan skema: kolom `profiles.deactivated_at`, schema `app_private`, dan penempatan `idempotency_requests` di schema tersebut. Arah teknis OD-29 diputuskan, sedangkan rincian prosedur admin tetap terbuka. OD-17, OD-19, dan OD-28 tetap terbuka.
+
+Pembaruan lanjutan 31 Oktober 2026 (amandemen ADR-13 untuk OD-29): desain penonaktifan, reaktivasi, validasi sesi, runbook, dan perlindungan OWNER aktif terakhir dirinci di §12.5, dan uji penerimaannya di §14.5. Usulan kolom `profiles.session_valid_after` wajib diuji integrasi. OD-29 tetap terbuka sampai uji §14.5 lulus.
+
+Pembaruan lanjutan 31 Oktober 2026 (status lokal dan ADR-14):
+-   Langkah 0 dan 1 §14.2 diterapkan sebagai dua SQL migration di Supabase lokal. `session_valid_after` dan validasi sesi lulus uji integrasi lokal pada jalur `profiles`.
+-   Desain prosedur admin ditambahkan: tabel `app_private.account_lifecycle_events` (§4.11), function admin, aturan `operation_id`, penguncian OWNER aktif terakhir, dan runbook lintas sistem (§12.5.4–§12.5.10). Bagian ini belum diimplementasikan.
+-   Status per skenario dan uji tambahan 19–27 dicatat di §14.5.
+-   Koreksi kontrak idempotency (ADR-14, pembaruan J5):
+    -   Kolom `request_fingerprint` ditambahkan ke rancangan §4.11.
+    -   Fingerprint kanonik dan urutan replay wajib ditetapkan (§12.5.9).
+    -   Expected state selalu diperiksa sebelum jalur `NOOP` untuk penonaktifan, reaktivasi, dan perubahan role (§12.5.8).
+    -   `p_expected_deactivated_at` boleh NULL untuk menyatakan bahwa akun diharapkan sudah aktif.
+    -   Uji 28–39 ditambahkan di §14.5.
+    -   Semua bagian ini belum diimplementasikan.
+-   Project cloud belum diubah. OD-29 tetap terbuka. Keputusan terbuka lain tidak berubah.
+
+Pembaruan 1 November 2026 (sinkronisasi bukti keamanan lokal):
+-   Langkah 1a §14.2 (`20261031163955_account_lifecycle_admin.sql`) diterapkan di lokal. Tabel audit (§4.11), function admin (§12.5.8), dan perlindungan OWNER aktif terakhir (§12.5.10) lulus uji integrasi lokal.
+-   Status uji §14.5 diperbarui per checkpoint (7SUP.4B-2C, 7SUP.4B-3A, 7SUP.4B-3B, 7SUP.4B-3B-R2, 7SUP.4B-3D), termasuk uji #19 dan #20. Run 7SUP.4B-3B pertama tetap tercatat INCONCLUSIVE.
+-   Temuan urutan ban dan invariant operasionalnya dicatat di §12.5.4. Invariant ini ditegakkan oleh runbook, bukan oleh mekanisme otomatis.
+-   Keputusan terbuka baru dicatat di STACK-DECISION-LOG ADR-14: G1 (sesi setelah perubahan role), G2 (durasi ban), dan G3 (deteksi state tidak konsisten). Ketiganya belum disetujui, dan tidak ada perubahan skema.
+-   Project cloud belum diubah. OD-29 tetap terbuka. Keputusan terbuka lain tidak berubah.
+
+Pembaruan lanjutan 1 November 2026 (persetujuan kebijakan G1–G3):
+-   Pemilik proyek menyetujui G1–G3 sebagai kebijakan MVP lokal (STACK-DECISION-LOG ADR-14). Persetujuan ini hanya untuk kebijakan; tidak ada migration, perubahan function SQL, akun uji, operasi ban, maupun perubahan konfigurasi yang diotorisasi.
+-   G1 (Opsi B): **APPROVED — NOT IMPLEMENTED.** Perilaku terpasang dan perilaku target dibedakan di §12.5.6; regresi direncanakan sebagai §14.5 #40 (PLANNED).
+-   G2 (`876000h` untuk MVP lokal): **APPROVED — MANUAL OPERATIONAL POLICY** (§12.5.5). Kebijakan produksi **DEFERRED TO PRODUCTION**.
+-   G3 (runbook manual satu operator): **APPROVED — MANUAL OPERATIONAL POLICY** (§12.5.4, §12.5.7). Bukan orkestrasi, pemantauan, maupun koordinasi multi-operator.
+-   Uji §14.5 #21, #27, dan #31 tetap belum dijalankan. Keberadaan cabang tersebut di source SQL bukan bukti lulus uji integrasi.
+-   Tidak ada perubahan skema. Project cloud belum diubah. OD-29 tetap terbuka.
+
+Pembaruan 1 November 2026 (implementasi G1, 7SUP.4B-3I):
+-   Migration aditif `20261101044858_admin_role_change_session_cutoff.sql` (§14.2 langkah 1b) diterapkan sekali di lokal. Migration ini hanya mengganti `app_private.admin_set_role`; tidak ada tabel, kolom, constraint, policy, maupun trigger baru, dan tiga migration sebelumnya tidak diubah.
+-   G1: **APPROVED — IMPLEMENTED AND TARGETED-TESTED LOCALLY** (§12.5.6). Perilaku lama, di mana sesi yang ada langsung memakai role baru, kini historis dan hanya berlaku di lingkungan tanpa migration keempat.
+-   Status §14.5: #31 dan #40 **Lulus (lokal)**. #21 dan #27 mendapat bukti baru tetapi tetap **Sebagian**, karena uji email belum terkonfirmasi hanya lulus dalam run yang INCONCLUSIVE.
+-   Event siklus akun bertambah menjadi 32 (id 28–32 dari 7SUP.4B-3I). Semua event dan entri audit Auth dipertahankan.
+-   G2 dan G3 tetap kebijakan operasional manual. Project cloud belum diubah. OD-29 tetap terbuka.
+
+Pembaruan 1 November 2026 (7SUP.5A-2 dan 7SUP.5A-3):
+
+-   **Keputusan:** B1–B7 dan B5.3 dicatat di STACK-DECISION-LOG ADR-15. OD-18 ditutup dengan Pilihan C. OD-17 dan aspek OD-19 yang tidak menghambat Stock In ditunda.
+-   **Migration kelima** `20261101064015_inventory_stock_movement_foundation.sql` (§14.2 langkah 2–7) diterapkan sekali di lokal. Empat migration sebelumnya tidak berubah.
+-   **Perbedaan implementasi terhadap desain:**
+    -   Matriks §12.2 merekomendasikan tulis langsung `categories` dan `DELETE` `materials` untuk `STAFF_WAREHOUSE`. Hak tersebut **tidak** diberikan, karena B5.3 melarang hak tulis langsung bagi role API sampai jalur tulisnya diputuskan bersama OD-19.
+    -   Kode error tambahan di luar daftar indikatif §7.2:
+        -   SQLSTATE `42501`: `UNAUTHORIZED` (helper role NULL) dan `FORBIDDEN` (bukan Staff).
+        -   SQLSTATE `P0001`: `INVALID_TRANSACTION_TYPE`, `MATERIAL_NOT_FOUND`, `IDEMPOTENCY_KEY_REQUIRED`, `INVALID_IDEMPOTENCY_KEY`, `STOCK_LIMIT_EXCEEDED`, dan `IDEMPOTENCY_STATE_INVALID`.
+    -   Kuantitas diterima sebagai `numeric`, agar pecahan dan nilai di luar rentang ditolak `INVALID_QUANTITY`.
+    -   Idempotency key maksimal 200 karakter di database. Di API Next.js, key wajib UUID.
+    -   CHECK tanda transaksi menolak setiap baris `OPENING_BALANCE` sampai OD-17 diputuskan.
+    -   View status stok bernama `material_stock_status`.
+    -   `stock_opname` dan `stock_opname_items` belum memiliki function penulis.
+-   **Uji database** (7SUP.5A-2):
+    -   Run pertama berhenti di `ACC-03` karena cacat parsing di harness; 27 uji sebelumnya lulus. Run lanjutan terpisah lulus 35 dari 35. Kedua run tidak digabung.
+    -   Cakupan: fungsional, idempotency lintas operasi, konkurensi, akses `anon` dan Owner, tulis langsung, schema privat, immutability, CHECK, dan rekonsiliasi.
+    -   Akun nonaktif dan cutoff G1 diuji di level SQL dengan klaim sesi asli dalam transaksi ROLLBACK.
+-   **Uji HTTP** (7SUP.5A-3): 29 dari 29 lulus melalui Route Handler Next.js dengan Supabase Auth asli.
+    -   Satu `STOCK_IN` (+1) di-commit pada material demo, bertanda catatan uji. Replay dengan key yang sama tidak menambah transaksi.
+    -   Tidak dijalankan: penonaktifan dan cutoff G1 yang di-commit melalui API, karena memerlukan perubahan akun demo dengan otorisasi terpisah; kedaluwarsa access token; serta interaksi antarmuka di browser.
+-   **Data lokal per akhir 7SUP.5A-3:** 2 akun demo, 2 kategori, 3 material (saldo 166, 3, 0), 11 transaksi final, 11 baris idempotency, dan 34 event siklus akun.
+-   **Uji penerimaan browser manual** (7SUP.5A-3B, oleh pemilik proyek, lokal):
+    -   Terverifikasi: login dan logout Staff serta Owner, daftar dan detail material, histori, validasi jumlah (kosong, nol, desimal), form Stock In yang tidak tampil untuk Owner, redirect `//evil.example` ke `/materials`, serta cookie `HttpOnly` dan `SameSite=Lax`.
+    -   Belum diuji: pengiriman Stock In dengan jumlah valid melalui browser (tidak ada transaksi baru); fokus keyboard, atribut cookie `Path=/`, serta input redirect `/\evil.example` dan `https://evil.example`.
+-   **Rekonsiliasi read-only setelah 7SUP.5A-3B:** 5 migration tetap terpasang, dan SHA-256 kelima file migration sama dengan baseline; 2 akun demo, 2 kategori, 3 material (saldo 166, 3, 0); 11 transaksi final dan 11 baris idempotency; saldo sesuai jumlah histori transaksi; 34 event siklus akun (jumlah tetap berdasarkan rekonsiliasi read-only). Entri audit Auth bertambah dari 105 menjadi 126 akibat login dan logout pengujian (append-only).
+-   **Temuan terbuka:** satu sesi Auth STAFF_WAREHOUSE dari login pertama pada 1 November 2026 pukul 09:58:54 UTC masih aktif, dan refresh token-nya belum dicabut. Sesi ini diterima pemilik proyek sebagai residual risk lokal dan tidak dicabut melalui Auth Admin API maupun perubahan langsung pada tabel Auth.
+-   Project cloud belum diubah. OD-29 tetap terbuka.
+
+Pembaruan 2 November 2026 (7SUP.5B-2B dan 7SUP.5B-3A):
+
+-   **Skema tidak berubah:** tetap lima migration; tidak ada migration, reset, maupun seed baru.
+-   **Uji HTTP Stock Out** (7SUP.5B-2B; harness `tests/integration/http/stock-out.mjs`; lokal):
+    -   EXEC-R: 48 dari 48 lulus, tanpa mutasi inventori.
+    -   EXEC-C: 63 dari 63 lulus. Tepat satu `STOCK_OUT` (−1) di-commit pada [DEMO] Kardus Medium dengan catatan uji, melalui lima request paralel ber-key sama. Replay dan pemakaian ulang key tidak menambah transaksi.
+    -   **Data lokal per akhir 7SUP.5B-2B (referensi historis):** 12 transaksi final, 12 baris idempotency, saldo 165, 3, 0; audit Auth 138; 1 sesi aktif (residual).
+-   **Insiden 7SUP.5B-3A** (uji browser manual; batas mutasi nol):
+    -   **Fakta hasil verifikasi** (rekonsiliasi read-only): 12 transaksi tambahan pada [DEMO] Kardus Medium, yaitu 7 `STOCK_IN` (+1) dan 5 `STOCK_OUT` (−1), tanpa catatan, dibuat oleh STAFF_WAREHOUSE pada 2 November 2026 pukul 08:26–09:02 UTC. Masing-masing punya tepat satu baris idempotency. Saldo pada setiap respons tersimpan berurutan. Invarian 0/0/0. Dua belas transaksi sebelumnya tidak berubah.
+    -   **Konteks** (pernyataan pemilik proyek, bukan bukti database): selama uji B-11 sampai B-15 dan B-22, Stock In dan Stock Out dengan jumlah 1 dicoba melalui browser saat mencoba Request Blocking di Chrome DevTools. Pemetaan per transaksi tidak dibuktikan.
+    -   **Keputusan pemilik proyek (K3):** 7SUP.5B-3A **FAIL** karena pelanggaran batas mutasi nol. Klasifikasi ini prosedural dan **bukan** konfirmasi bug aplikasi. Kedua belas transaksi dipertahankan sebagai data demo, tanpa kompensasi, penghapusan, atau perubahan.
+    -   **Batasan hasil:** uji B-01 sampai B-29 pada 7SUP.5B-3A **tidak dinilai** dan tidak berstatus PASS.
+-   **Baseline lokal yang disahkan (K4)**, dari verifikasi read-only 2 November 2026 pukul 09:57:02 UTC:
+    -   identitas database `7702702923141128229`;
+    -   24 transaksi final (checksum `fec28b81fe8bd554d2a891f1d4305df2`; 12 transaksi pertama `ea27617147dd769b471e0472b8a9385a`);
+    -   24 baris idempotency, tanpa key ganda;
+    -   saldo 167, 3, 0; invarian 0/0/0;
+    -   audit Auth 142; 1 sesi aktif (residual);
+    -   34 event siklus akun; 5 migration; Git HEAD `d615cce`.
+    -   Baseline sebelumnya tetap berlaku sebagai referensi historis.
+-   **Ditunda (K5):** uji browser yang memerlukan mutasi ditunda sampai stack test E2E terisolasi tersedia. Uji mutasi tidak dilanjutkan di database pengembangan.
+-   **Belum disetujui:** desain dan pembangunan stack test (P1/P2), uji SQL boundary, uji browser dengan transaksi permanen (7SUP.5B-3B), sinkronisasi status Stock Out di PRD, FEATURE-SPECIFICATION, dan ADR-15 B5.2 (7SUP.5B-3C), serta AUTH-02.
+-   Temuan terbuka sesi residual 1 November 2026 tetap berlaku. Project cloud belum diubah. OD-29 tetap terbuka.
