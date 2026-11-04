@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export default function HomePage() {
@@ -19,9 +21,12 @@ export default function HomePage() {
               dan Stock Opname bisnis hampers dan personalized gift Firaza.
             </p>
             <p className="note">
-              Aplikasi ini masih dalam pengembangan. Database dan autentikasi
-              belum terhubung, sehingga belum ada data yang ditampilkan.
+              Aplikasi ini masih dalam pengembangan. Fitur yang sudah tersedia:
+              masuk ke aplikasi, daftar material, dan pencatatan Stock In.
             </p>
+            <Button asChild size="lg" className="mt-4">
+              <Link href="/login">Masuk</Link>
+            </Button>
           </CardContent>
         </Card>
       </section>
