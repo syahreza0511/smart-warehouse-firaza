@@ -5,7 +5,7 @@ Test harness for Smart Warehouse Firaza. None of it runs in CI; there is no `npm
 | Folder | What it needs | State it changes |
 |---|---|---|
 | `unit/` | Node.js only. No network, database, or Supabase Auth | None |
-| `integration/http/` | A local Next.js server at `http://127.0.0.1:3000`, the local Supabase database container (read only), demo accounts | Auth: one session per login (all logged out at the end) and Auth audit entries. Inventory: only in the `commit` phase, exactly one Stock Out |
+| `integration/http/` | A local Next.js server at `http://127.0.0.1:3000`, the local Supabase database container (read only, `stock-out.mjs` only), demo accounts | Auth: one session per login (all logged out at the end) and Auth audit entries. Inventory: only in the `commit` phase of `stock-out.mjs`, exactly one Stock Out |
 | `integration/sql/` | The local Supabase database container and one new STAFF_WAREHOUSE login made for the test | Auth: that login and its logout, and their audit entries. Inventory: none (rolled back) |
 
 ## Unit tests
@@ -39,6 +39,20 @@ Phases always run in the order `pre-rpc`, `rpc-reject`, `commit`, and none runs 
 - **Sessions.** Each account that logs in (staff, owner, and a temporary staff login for the logged-out-cookie test) is logged out independently; a failed logout is a FAIL. Sessions are checked by identity, not only by count: a fingerprint of every session that existed before the run (id, user, timestamps, refresh counter; ids are never printed) must stay identical, and the number of sessions created during the run must match the live logins at each check and be 0 at the end. So sessions that existed before the run, including any residual one, are not used, refreshed, or revoked. If such a session is refreshed by its own browser during the run, the check fails (fail-closed). Each login and logout adds an Auth audit entry; the script prints the before and after counts.
 - **Database access.** Only `docker exec … psql` in `READ ONLY` transactions against a local `supabase_db_*` container (override with `FIRAZA_DB_CONTAINER`). Output is limited to counts and checksums.
 - Exit codes: `0` all PASS; `1` FAIL or abort before any commit request was sent; `2` POST-COMMIT NO-RETRY.
+
+## Auth cookie attributes (`integration/http/auth-cookie.mjs`)
+
+```sh
+FIRAZA_DEMO_CREDENTIALS_FILE=/path/outside/the/repo/credentials.json \
+FIRAZA_EXPECT_SECURE_COOKIE=true \
+node tests/integration/http/auth-cookie.mjs
+```
+
+Checks the `Set-Cookie` attributes of the Supabase auth cookies (F-01) and the login, session, and logout flow. Start the server with the `AUTH_COOKIE_SECURE` value under test and set `FIRAZA_EXPECT_SECURE_COOKIE` to what it must send: `true` when the variable is unset, `true`, or any value other than `false`; `false` only when it is exactly `false`.
+
+- One STAFF_WAREHOUSE login, logged out at the end. No database access and no inventory change.
+- Every auth cookie must be `HttpOnly`, `SameSite=Lax`, and `Path=/`, with `Secure` as expected. Logout must clear every auth cookie, and the old cookies must then get 401.
+- Exit codes: `0` all PASS; `1` FAIL or abort.
 
 ## SQL integration (`integration/sql/stock-out-boundary.sql`)
 
