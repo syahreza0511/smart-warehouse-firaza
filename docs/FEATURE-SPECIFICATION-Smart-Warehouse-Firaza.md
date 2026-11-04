@@ -3,10 +3,15 @@
 # Smart Warehouse Firaza
 
 > **Status dokumen:** penjabaran rinci kebutuhan dari PRD kanonik.
-> **Revisi:** Gelombang 2a, 29 Oktober 2026. Pembaruan 30 Oktober 2026: Catatan Owner (§12a), akun dan akses (§3, §4), serta penyelarasan aturan material, kategori, idempotency, dan koreksi dengan PRD.
+> **Revisi:** Gelombang 2a, 29 Oktober 2026. Pembaruan 30 Oktober 2026: Catatan Owner (§12a), akun dan akses (§3, §4), serta penyelarasan aturan material, kategori, idempotency, dan koreksi dengan PRD. Pembaruan 31 Oktober 2026: status OD-29 pada aturan bisnis autentikasi. Pembaruan lanjutan 31 Oktober 2026: status fondasi otorisasi yang sudah diuji di lokal dan prosedur admin siklus akun (STACK-DECISION-LOG ADR-14). Pembaruan 1 November 2026: status implementasi dan uji lokal prosedur admin siklus akun (ADR-14) pada aturan bisnis autentikasi disinkronkan; OD-29 tetap terbuka. Pembaruan lanjutan 1 November 2026: kebijakan keamanan G1–G3 (ADR-14) disetujui untuk MVP lokal; G1 belum diimplementasikan. Pembaruan 1 November 2026 (7SUP.4B-3I): G1 diimplementasikan dan lulus uji terarah di Supabase lokal; OD-29 tetap terbuka. Pembaruan 1 November 2026 (7SUP.5A-2 dan 7SUP.5A-3): status implementasi lokal irisan Stock In (§3, §7, §16; STACK-DECISION-LOG ADR-15). Pembaruan 1 November 2026 (7SUP.5A-3B): hasil uji penerimaan browser manual irisan Stock In di lokal, beserta keterbatasannya dan satu sesi Auth tertinggal sebagai residual risk, dicatat (§7, §16); kebutuhan tidak berubah. Pembaruan 2 November 2026 (7SUP.5B-3C): status Stock Out disinkronkan di blok status pembuka, §7, §8 ("Status implementasi"), dan §16. API dan antarmuka Stock Out diimplementasikan di working tree lokal dan belum di-commit ke Git; API lulus uji HTTP lokal (7SUP.5B-2B), sedangkan uji browser belum diverifikasi (7SUP.5B-3A FAIL prosedural). Rinciannya di STACK-DECISION-LOG ADR-15 B5.2 dan ADR-16; kebutuhan tidak berubah dan tidak ada keputusan baru. Pembaruan 4 November 2026 (DOC-SYNC-01): status Git disinkronkan di blok status pembuka, §8, dan §16. Kode aplikasi, migration, dan harness uji kini di-commit secara lokal di branch `feat/supabase-foundation` (C-1 `f132ad7` sampai C-7 `bb6865b`) dan belum di-push ke GitHub. Commit tidak membuktikan perilaku runtime, dan status uji tidak berubah; kebutuhan tidak berubah. Pembaruan 4 November 2026 (P0-SEC-01, DOC-SYNC-02): hasil P0-TEST-02 (stack uji Supabase lokal sekali pakai) dicatat di blok status pembuka, §8, dan §16; atribut cookie sesi di §3 disesuaikan dengan perbaikan F-01 (`Secure` secara default). Belum ada verifikasi cloud, verifikasi responsif multi-viewport, maupun pernyataan kesiapan produksi; kebutuhan tidak berubah. Pembaruan 4 November 2026 (P1-DOC-READY-01): status Git di blok status pembuka diperbarui setelah branch `feat/supabase-foundation` di-push ke GitHub dan diajukan melalui PR #3 (belum di-merge ke `main`); kebutuhan tidak berubah.
 >
 > - Kebutuhan produk dan aturan bisnis mengacu pada PRD kanonik, [PRD-Smart-Warehouse-Firaza-Dicoding.md](PRD-Smart-Warehouse-Firaza-Dicoding.md). Keputusan teknologi mengacu pada [STACK-DECISION-LOG.md](STACK-DECISION-LOG.md). Jika terjadi konflik lintas dokumen, laporkan konflik tersebut untuk diputuskan; jangan menetapkan prioritas secara otomatis.
-> - Seluruh fitur di dokumen ini berstatus **[RENCANA — belum diimplementasikan]**. Yang sudah ada baru fondasi aplikasi Next.js (STACK-DECISION-LOG ADR-12): halaman awal tanpa data yang lulus production build. Belum ada fitur bisnis yang diimplementasikan maupun diuji, termasuk autentikasi Supabase Auth, REST API bisnis, transaksi stok, dan Stock Opname.
+> - Kecuali irisan Stock In dan irisan Stock Out, seluruh fitur di dokumen ini berstatus **[RENCANA — belum diimplementasikan]**. Kedua irisan diimplementasikan di branch `feat/supabase-foundation` (di-push ke GitHub pada 4 November 2026 dan diajukan melalui PR #3; belum di-merge ke `main`), serta lulus uji HTTP dan uji browser di Supabase **lokal**, tetapi belum dinyatakan selesai; status, bukti, dan batas masing-masing, termasuk uji browser, dicatat di butir-butir berikut.
+> - Irisan Stock In sudah dibangun dan lulus uji integrasi HTTP di Supabase **lokal** (7SUP.5A-3). Isinya: login dan logout (§3), daftar dan detail material, histori transaksi terbaru, dan Stock In (§7). Rinciannya di "Status implementasi" §7. Uji penerimaan browser manual di lokal (7SUP.5A-3B) memverifikasi alur inti dengan keterbatasan; pengiriman Stock In dengan jumlah valid belum diuji melalui browser, sehingga irisan ini belum dinyatakan selesai.
+> - Stock Out (7SUP.5B-2A dan 7SUP.5B-2B, Supabase **lokal**): API (`POST /api/v1/stock-movements` dengan `type: "STOCK_OUT"`) diimplementasikan, di-commit secara lokal (C-6 `b781551`; belum di-push ke GitHub), dan lulus uji HTTP lokal (EXEC-R 48 dari 48 tanpa mutasi inventori; EXEC-C 63 dari 63). Antarmuka (kartu Stock Out terpisah) juga diimplementasikan dan di-commit secara lokal (C-6); build dan unit test (mock) lulus. Uji browser **belum diverifikasi**: 7SUP.5B-3A FAIL prosedural dan B-01 sampai B-29 tidak dinilai. Rinciannya di "Status implementasi" §8.
+> - Pembaruan 4 November 2026 (P0-TEST-02): pada stack uji Supabase lokal sekali pakai (bukan database pengembangan), Stock In dan Stock Out terverifikasi melalui API (46 dari 46), harness HTTP (63 dari 63), browser (Chrome headless otomatis, 34 dari 34), probe privilege (14 dari 14), dan uji SQL boundary (SQL-01 sampai SQL-03). Termasuk pengiriman Stock In dengan jumlah valid melalui browser. Dua butir di atas adalah potret sebelum P0-TEST-02. Kedua irisan belum dinyatakan selesai sebagai kriteria MVP (§16), karena belum ada verifikasi cloud, deployment, maupun responsif multi-viewport.
+> - Belum diimplementasikan: kategori, CRUD material, koreksi, Stock Opname, dashboard, laporan, dan Catatan Owner.
+> - Fondasi otorisasi di database (tabel `profiles`, helper role, penolakan akun nonaktif, dan validasi sesi) serta prosedur admin siklus akun berupa function SQL (STACK-DECISION-LOG ADR-14) sudah diterapkan di Supabase **lokal** dan lulus uji integrasi lokal dengan akun Supabase Auth uji sekali pakai, tanpa antarmuka aplikasi (STACK-DECISION-LOG ADR-13 dan ADR-14). Aplikasi tidak memanggil function admin, dan tidak ada antarmuka admin maupun layanan orkestrasi permanen. Sejak migration keempat (kebijakan G1), perubahan role membuat sesi lama kehilangan akses aplikasi. Migration kelima menambahkan tabel inventori dan RPC `post_stock_movement` dengan otorisasi database fail-closed (ADR-15 B5.3).
 > - Label sumber mengikuti legenda di PRD kanonik. Tidak ada label tambahan di dokumen ini.
 > - Rincian pilihan dan rekomendasi keputusan terbuka (OD) dicatat di PRD kanonik dan STACK-DECISION-LOG; dokumen ini hanya menandai di langkah mana keputusan terbuka berpengaruh.
 
@@ -131,9 +136,26 @@ Password:
 
 1.  Login dan logout menggunakan email dan password melalui Supabase Auth. Aplikasi tidak membuat sistem penerbitan token sendiri. [KEPUTUSAN] (STACK-DECISION-LOG ADR-04; PRD FR-AUTH-01)
 2.  Setiap operasi terlindungi memvalidasi sesi dan role di server, dan akses data dibatasi di database. [KEPUTUSAN] (PRD FR-AUTH-03)
-3.  Tidak ada registrasi publik: public signup di Supabase Auth dinonaktifkan. Akun Owner dan Staff Warehouse dibuat developer melalui provisioning manual; profil dan role disiapkan melalui prosedur admin terkontrol, tanpa trigger otomatis untuk membuat profil. [KEPUTUSAN] (PRD FR-AUTH-02; STACK-DECISION-LOG ADR-11)
-4.  Role hanya dapat ditetapkan atau diubah melalui proses admin terkontrol; pengguna tidak dapat menetapkan atau menaikkan role sendiri. Login yang berhasil tidak otomatis memberi otorisasi: pengguna tanpa profil valid atau tanpa hak akses yang sah ditolak dari fitur bisnis aplikasi, termasuk inventori dan Catatan Owner. Penolakan ini terjadi di otorisasi aplikasi, bukan di login Supabase Auth. [KEPUTUSAN] (PRD FR-AUTH-05)
-5.  Akses akun dapat dinonaktifkan tanpa menghapus profil maupun histori audit. Pengguna yang dinonaktifkan tidak boleh tetap memperoleh akses ke fitur bisnis, dan sesi aktifnya harus ditangani secara aman. [KEPUTUSAN] (PRD FR-AUTH-04) Mekanisme teknis penonaktifan dan penanganan sesi aktif belum diputuskan. [OPEN DECISION OD-29]
+3.  Tidak ada registrasi publik: public signup di Supabase Auth dinonaktifkan. Akun Owner dan Staff Warehouse dibuat developer melalui provisioning manual; profil dan role disiapkan melalui prosedur admin terkontrol, tanpa trigger otomatis untuk membuat profil. [KEPUTUSAN] (PRD FR-AUTH-02; STACK-DECISION-LOG ADR-11) Prosedur provisioning dirancang di STACK-DECISION-LOG ADR-14 (function SQL `admin_provision_profile`). Status 1 November 2026: diimplementasikan dan lulus uji integrasi di Supabase **lokal**, termasuk penolakan untuk akun dengan email belum terkonfirmasi (lulus dalam run yang secara keseluruhan INCONCLUSIVE; DATABASE-DESIGN §14.5 #27). Penolakan saat ban Auth aktif lulus uji lokal (7SUP.4B-3I). Provisioning dijalankan developer melalui sesi SQL tepercaya, bukan dari aplikasi.
+4.  Role hanya dapat ditetapkan atau diubah melalui proses admin terkontrol; pengguna tidak dapat menetapkan atau menaikkan role sendiri. Status Owner di aplikasi tidak memberi kewenangan administrasi akun (STACK-DECISION-LOG ADR-14). Login yang berhasil tidak otomatis memberi otorisasi: pengguna tanpa profil valid atau tanpa hak akses yang sah ditolak dari fitur bisnis aplikasi, termasuk inventori dan Catatan Owner. Penolakan ini terjadi di otorisasi aplikasi, bukan di login Supabase Auth. [KEPUTUSAN] (PRD FR-AUTH-05)
+5.  Akses akun dapat dinonaktifkan tanpa menghapus profil maupun histori audit. Pengguna yang dinonaktifkan tidak boleh tetap memperoleh akses ke fitur bisnis, dan sesi aktifnya harus ditangani secara aman. [KEPUTUSAN] (PRD FR-AUTH-04) Desain teknis penonaktifan, reaktivasi, dan penanganan sesi sudah ditetapkan (STACK-DECISION-LOG ADR-13 dan amandemennya; DATABASE-DESIGN §12.5). Penolakan berdasarkan status database dan validasi sesi setelah reaktivasi sudah lulus uji integrasi di Supabase lokal, untuk data profil saja. Status 1 November 2026: prosedur admin SQL (STACK-DECISION-LOG ADR-14) diimplementasikan dan lulus uji integrasi lokal, termasuk urutan ban dan pencabutan ban Supabase Auth.
+    -   Penonaktifan: (1) nonaktifkan profil di database, (2) pastikan akses database ditolak, (3) ban di Supabase Auth, (4) verifikasi status akhir.
+    -   Reaktivasi: (1) cabut ban Supabase Auth, (2) pastikan akses database masih ditolak, (3) reaktivasi database dengan cutoff sesi baru, (4) pengguna wajib membuat sesi Auth baru.
+    -   Urutan ini adalah runbook operasional yang dijalankan developer, belum ditegakkan oleh layanan orkestrasi permanen.
+    -   Ban Supabase Auth tidak mencabut access token yang sudah terbit. Penolakan langsung berasal dari penonaktifan database.
+    -   Kebijakan keamanan G1–G3 (STACK-DECISION-LOG ADR-14) disetujui pemilik proyek pada 1 November 2026 untuk MVP lokal:
+        -   G1, untuk perubahan role menurut butir 4: setiap perubahan role yang diterapkan wajib membuat sesi lama kehilangan akses aplikasi, sehingga pengguna harus membuat sesi Auth baru. **Diimplementasikan dan lulus uji terarah di Supabase lokal** (7SUP.4B-3I). Penegakannya ada di otorisasi database; sesi dan refresh token Supabase Auth tidak dicabut. Belum ada antarmuka login aplikasi maupun penanganan logout paksa di aplikasi.
+        -   G2: durasi ban Supabase Auth `876000h` untuk MVP lokal. Penonaktifan database tetap kontrol utama penolakan akses. Kebijakan produksi ditinjau terpisah.
+        -   G3: runbook manual satu operator dengan pemeriksaan sebelum dan sesudah operasi, deteksi state tidak konsisten, dan penghentian saat terjadi konflik atau hasil tidak pasti. Ini kebijakan operasional, bukan layanan orkestrasi.
+    -   Uji penerimaan keamanan belum lengkap, dan implementasi di cloud atau produksi belum diverifikasi. Antarmuka admin dan sebagian besar fitur bisnis gudang belum diimplementasikan. [OPEN DECISION OD-29]
+    -   **Status implementasi login dan logout** (7SUP.5A-3, lokal):
+        -   `POST /api/v1/auth/login` memvalidasi input, masuk melalui Supabase Auth, lalu mewajibkan database mengotorisasi sesi baru melalui profil aktif. Bila profil tidak terbaca, sesi langsung dicabut.
+        -   Kredensial salah, email tidak dikenal, dan akun yang ditolak Supabase Auth mendapat respons generik yang sama.
+        -   `POST /api/v1/auth/logout` mencabut sesi saat ini di Supabase Auth dan menghapus cookie.
+        -   Cookie sesi bersifat `HttpOnly`, `SameSite=Lax`, dan `Path=/`. Atribut `Secure` aktif secara default dan hanya dinonaktifkan bila `AUTH_COOKIE_SECURE` bernilai persis `false`, untuk menjalankan aplikasi melalui HTTP lokal; nilai kosong atau nilai lain tetap `Secure` (perbaikan F-01, P0-SEC-01, 4 November 2026). Sebelumnya `Secure` hanya aktif bila variabel itu bernilai `true`.
+        -   Mutasi hanya menerima request JSON dari origin yang sama.
+        -   Lulus uji HTTP lokal, termasuk penolakan cookie lama setelah logout.
+        -   Penolakan sesi setelah penonaktifan atau cutoff G1 melalui API Next.js **belum diuji** dengan perubahan status yang di-commit. Penolakannya di level database sudah teruji (7SUP.5A-2).
 
 ------------------------------------------------------------------------
 
@@ -459,6 +481,31 @@ Validasi berlaku di API dan database, bukan hanya di UI. [KEPUTUSAN]
 
 ------------------------------------------------------------------------
 
+## Status implementasi (1 November 2026, Supabase lokal)
+
+-   **Database** (7SUP.5A-2): RPC `post_stock_movement` untuk `STOCK_IN` dan `STOCK_OUT`. Rinciannya di DATABASE-DESIGN §15, "Pembaruan 1 November 2026 (7SUP.5A-2 dan 7SUP.5A-3)".
+-   **REST API** (7SUP.5A-3):
+    -   `GET /api/v1/materials`, `GET /api/v1/materials/{id}`, dan `GET /api/v1/materials/{id}/transactions`.
+    -   `POST /api/v1/stock-movements`: hanya menerima `type: "STOCK_IN"`, dengan header `Idempotency-Key` berupa UUID.
+        -   Pembaruan 7SUP.5B-2A (2 November 2026; working tree lokal, belum di-commit ke Git): endpoint ini juga menerima `type: "STOCK_OUT"`, dengan header `Idempotency-Key` dan validasi Zod yang sama. Butir di atas adalah potret 7SUP.5A-3. Status Stock Out (uji HTTP 7SUP.5B-2B; uji browser belum diverifikasi) dicatat di STACK-DECISION-LOG ADR-15 B5.2 dan ADR-16.
+    -   Tambahan: `GET /api/v1/auth/session` mengembalikan id, nama, dan role pengguna yang sedang masuk.
+    -   Validasi Zod sebelum RPC: kuantitas bilangan bulat 1 sampai 2.147.483.647, dan catatan maksimal 500 karakter (batas API; database tidak membatasi panjang catatan).
+    -   Role pemanggil dibaca dari database, bukan dari request.
+    -   Kode error RPC dipetakan ke status HTTP: 400 validasi, 403 role atau sesi tidak berwenang, 404 material tidak ditemukan, 409 material arsip atau beku dan batas stok, 422 key dipakai ulang dengan payload berbeda, dan 503 untuk kegagalan yang dapat diulang.
+-   **Antarmuka** (7SUP.5A-3): halaman `/login`, `/materials`, dan `/materials/{id}` sebagai Client Component yang membaca data hanya melalui API (OD-18 Pilihan C).
+    -   Form Stock In tampil hanya untuk Staff Warehouse; Owner melihat keterangan baca-saja.
+    -   Setiap pengiriman memakai satu idempotency key. Bila hasilnya tidak pasti, pengiriman ulang memakai key dan payload yang sama.
+    -   Setelah berhasil, saldo dan histori dimuat ulang dari API.
+-   **Bukti uji:** 29 dari 29 uji HTTP lokal lulus, termasuk satu Stock In yang di-commit melalui API Next.js, replay tanpa transaksi ganda, penolakan Owner, dan penolakan CSRF.
+-   **Uji browser manual** (7SUP.5A-3B, oleh pemilik proyek, lokal): login dan logout Staff serta Owner, daftar dan detail material, histori, validasi jumlah (kosong, nol, desimal), form yang tidak tampil untuk Owner, dan redirect `//evil.example` ke `/materials` berhasil diverifikasi.
+-   **Belum diverifikasi:**
+    -   pengiriman Stock In dengan jumlah valid melalui browser; transaksi committed baru terbukti melalui uji HTTP;
+    -   fokus keyboard, atribut cookie `Path=/` di browser, serta input redirect `/\evil.example` dan `https://evil.example`;
+    -   penolakan melalui API Next.js setelah penonaktifan atau cutoff G1 yang di-commit.
+-   **Temuan terbuka:** satu sesi Auth STAFF_WAREHOUSE dari login pertama pada 1 November 2026 pukul 09:58:54 UTC masih aktif dan refresh token-nya belum dicabut. Sesi ini diterima pemilik proyek sebagai residual risk lokal.
+
+------------------------------------------------------------------------
+
 # 7a. Saldo Awal (`OPENING_BALANCE`)
 
 ## Purpose
@@ -538,6 +585,27 @@ Request:
 Result:
 
 Transaction rejected.
+
+------------------------------------------------------------------------
+
+## Status implementasi (2 November 2026, Supabase lokal)
+
+-   **Implementasi API** (7SUP.5B-2A): **IMPLEMENTED IN LOCAL WORKING TREE (NOT COMMITTED)**. `POST /api/v1/stock-movements` menerima `type: "STOCK_OUT"` dengan header `Idempotency-Key` dan validasi Zod yang sama dengan Stock In; validasi saldo, pembekuan, dan arsip tetap dijalankan oleh RPC database. File implementasinya masih untracked di working tree lokal dan belum di-commit ke Git. Build lulus.
+-   **Uji HTTP** (7SUP.5B-2B, lokal): **HTTP-TESTED LOCALLY**.
+    -   EXEC-R: 48 dari 48 lulus, tanpa mutasi inventori.
+    -   EXEC-C: 63 dari 63 lulus, dengan satu transaksi database `STOCK_OUT` (−1) yang berhasil di-commit pada [DEMO] Kardus Medium. Replay dengan key dan payload identik tidak menghasilkan transaksi ganda; penggunaan ulang key dengan payload berbeda ditolak dengan HTTP 422.
+    -   Log run belum diarsipkan permanen.
+-   **Implementasi antarmuka** (7SUP.5B-2A): **IMPLEMENTED IN LOCAL WORKING TREE (NOT COMMITTED)**. Kartu Stock Out terpisah dari kartu Stock In dan hanya tampil untuk Staff Warehouse; Owner melihat keterangan baca-saja. Penyimpanan attempt dipisah per tipe transaksi. Build lulus; unit test (mock) 24 dari 24 lulus. Unit test memakai mock dan tidak membuktikan perilaku database maupun browser.
+-   **Uji browser:** **NOT VERIFIED**. 7SUP.5B-3A FAIL prosedural (K3); B-01 sampai B-29 tidak dinilai dan tidak berstatus PASS. Uji browser yang memerlukan mutasi ditunda ke stack test E2E terisolasi (K5). Uji HTTP dan unit test tidak membuktikan perilaku antarmuka di browser.
+-   **Belum dijalankan:** uji SQL boundary (Stock Out sebesar seluruh saldo, lalu satu unit berikutnya) sudah tersedia di `tests/integration/sql/`, tetapi belum pernah dijalankan.
+-   **Pembaruan status Git (4 November 2026, DOC-SYNC-01):** butir di atas adalah potret 2 November 2026. Kode API dan antarmuka Stock Out kini di-commit secara lokal di C-6 (`b781551`), dan harness `tests/` di C-7 (`bb6865b`), di branch `feat/supabase-foundation`; belum di-push ke GitHub. Status uji tidak berubah: uji browser belum diverifikasi dan uji SQL boundary belum dijalankan.
+-   **Pembaruan uji (4 November 2026, P0-TEST-02; stack uji Supabase lokal sekali pakai, bukan database pengembangan):** butir "Uji browser" dan "Belum dijalankan" di atas adalah potret sebelum P0-TEST-02.
+    -   **Uji browser:** **VERIFIED IN BROWSER LOCALLY** (Chrome headless otomatis, 34 dari 34): Stock Out dengan jumlah valid, penolakan jumlah 0 dan stok tidak cukup dengan pesan yang tampil, kirim ulang setelah respons hilang tanpa transaksi ganda (attempt dipulihkan setelah reload), klik ganda yang menghasilkan satu transaksi, serta Owner tanpa form transaksi. Saldo dan histori yang tampil sama dengan database.
+    -   **Uji SQL boundary:** dijalankan untuk pertama kalinya; SQL-01, SQL-02, dan SQL-03 lulus, dan seluruh perubahannya di-rollback.
+    -   **Uji HTTP:** harness `tests/integration/http/stock-out.mjs` lulus 63 dari 63, dengan lima request paralel ber-key sama yang menghasilkan satu `STOCK_OUT`.
+    -   **Mutasi:** tepat delapan transaksi uji dan delapan baris idempotency di database uji untuk seluruh P0-TEST-02, sesuai anggaran yang ditetapkan sebelum uji.
+    -   **Batas:** hanya lokal melalui HTTP; satu viewport desktop dan satu browser; belum di cloud atau deployment. Bukan pernyataan kesiapan produksi.
+-   Status yang sama dicatat di STACK-DECISION-LOG ADR-15 B5.2 dan ADR-16. Aturan bisnis dan validasi di atas adalah spesifikasi; status ini tidak mengubahnya.
 
 ------------------------------------------------------------------------
 
@@ -1224,7 +1292,21 @@ Dokumen harus direview terlebih dahulu.
 
 # 16. MVP Completion Criteria
 
-Smart Warehouse Firaza dianggap memenuhi MVP apabila kriteria berikut terpenuhi. **Saat ini belum ada kriteria yang terpenuhi atau teruji**, karena aplikasi belum diimplementasikan.
+Smart Warehouse Firaza dianggap memenuhi MVP apabila kriteria berikut terpenuhi. **Saat ini belum ada kriteria yang terpenuhi seluruhnya.**
+
+Bukti parsial di Supabase lokal (1 November 2026, 7SUP.5A-2 dan 7SUP.5A-3):
+
+-   Login dan logout, serta penolakan pengguna tanpa sesi atau tanpa role yang berwenang di server dan database, lulus uji HTTP dan database.
+-   Stock In dan Stock Out lulus uji di level database. Stock In juga lulus melalui API Next.js.
+    -   Pembaruan 7SUP.5B-2B dan 7SUP.5B-3A (2 November 2026, Supabase lokal). Butir di atas adalah potret 7SUP.5A-3.
+        -   **Uji HTTP Stock Out** (7SUP.5B-2B, lokal): EXEC-R 48 dari 48 lulus, tanpa mutasi inventori; EXEC-C 63 dari 63 lulus, dengan satu transaksi database `STOCK_OUT` (−1) yang berhasil di-commit.
+        -   **Uji browser Stock Out:** **NOT VERIFIED**. 7SUP.5B-3A FAIL prosedural karena pelanggaran batas mutasi nol (K3); B-01 sampai B-29 **NOT ASSESSED** (tidak dinilai dan tidak berstatus PASS). Uji browser yang memerlukan mutasi ditunda sampai stack test E2E terisolasi tersedia (K5).
+        -   **Batas:** uji HTTP tidak membuktikan perilaku browser; uji SQL boundary Stock Out belum pernah dijalankan; implementasi Stock Out masih di working tree lokal dan belum di-commit ke Git. Karena itu, kriteria Inventory untuk Stock Out belum dinyatakan terpenuhi. Rinciannya di §8 "Status implementasi".
+        -   Pembaruan 4 November 2026 (DOC-SYNC-01): implementasi Stock Out kini di-commit secara lokal (C-6 `b781551`) dan belum di-push ke GitHub. Butir "Batas" di atas adalah potret 2 November 2026. Kriteria Inventory untuk Stock Out tetap belum dinyatakan terpenuhi, karena uji browser dan uji SQL boundary belum dijalankan.
+        -   Pembaruan 4 November 2026 (P0-TEST-02; stack uji Supabase lokal sekali pakai): uji browser Stock In dan Stock Out (34 dari 34) serta uji SQL boundary (SQL-01 sampai SQL-03) lulus; rinciannya di §8 "Status implementasi". Butir sebelumnya adalah potret sebelum P0-TEST-02. Kriteria Inventory untuk Stock In dan Stock Out terbukti di lokal, tetapi belum dinyatakan terpenuhi sebagai kriteria MVP sampai verifikasi deployment dilakukan.
+-   Kesesuaian saldo dengan histori transaksi lulus rekonsiliasi.
+
+Kriteria lain belum dibangun. Uji penerimaan browser manual (7SUP.5A-3B) memverifikasi alur inti irisan Stock In dengan keterbatasan, tetapi pengiriman Stock In dengan jumlah valid belum diuji melalui browser, sehingga tidak ada kriteria MVP yang dinyatakan terpenuhi seluruhnya.
 
 ## Authentication
 
