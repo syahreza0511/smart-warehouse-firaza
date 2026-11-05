@@ -724,12 +724,17 @@ begin
     raise exception 'inventory_foundation check failed: append-only trigger function';
   end if;
 
-  -- Only the two stock movement functions are new in public; the earlier
-  -- foundation exposes no function there.
+  -- The only callable function in public is the stock movement wrapper; the
+  -- earlier foundation exposes no function there. Functions returning
+  -- event_trigger are not counted: PostgreSQL runs them only from an event
+  -- trigger and rejects any direct call through SQL or the Data API. A
+  -- Supabase project can have one in public, for example rls_auto_enable for
+  -- the ensure_rls event trigger that enables RLS on new public tables.
   if (
     select pg_catalog.count(*)
       from pg_catalog.pg_proc as p
      where p.pronamespace = 'public'::regnamespace
+       and p.prorettype <> 'pg_catalog.event_trigger'::pg_catalog.regtype
   ) <> 1 then
     raise exception 'inventory_foundation check failed: unexpected public functions';
   end if;
