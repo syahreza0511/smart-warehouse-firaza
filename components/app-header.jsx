@@ -52,6 +52,9 @@ export function AppHeader({ user }) {
             Smart Warehouse Firaza
           </Link>
           <nav aria-label="Navigasi utama" className="flex gap-4 text-sm">
+            <Link href="/dashboard" className="text-forest underline-offset-4 hover:underline">
+              Dashboard
+            </Link>
             <Link href="/materials" className="text-forest underline-offset-4 hover:underline">
               Material
             </Link>
