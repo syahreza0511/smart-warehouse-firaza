@@ -5,34 +5,52 @@ import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { TRANSACTION_LABEL, formatDateTime, formatDelta, formatNumber } from "@/components/inventory-format";
+import { MaterialStatusPanel } from "@/components/material-status-panel";
 import { ErrorState, LoadingState } from "@/components/page-state";
 import { StockInForm } from "@/components/stock-in-form";
 import { StockOutForm } from "@/components/stock-out-form";
 import { StockStatusBadge } from "@/components/stock-status-badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { redirectToLogin, useSession } from "@/components/use-session";
 import { api, requiresLogin, toApiError } from "@/lib/api-client";
+
+const STATUS_EVENT_LABEL = {
+  ARCHIVED: "Diarsipkan",
+  REACTIVATED: "Diaktifkan kembali",
+};
 
 export default function MaterialDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const pathname = usePathname();
   const session = useSession();
-  const [state, setState] = useState({ status: "loading", material: null, transactions: [], error: null });
+  const [state, setState] = useState({
+    status: "loading",
+    material: null,
+    management: null,
+    transactions: [],
+    events: [],
+    error: null,
+  });
 
-  // Balance and history always come from the API, including after a Stock In.
+  // Balance, state, and history always come from the API, including after a
+  // stock movement or a status change.
   const load = useCallback(
     async ({ quiet = false } = {}) => {
       if (!quiet) setState((s) => ({ ...s, status: "loading", error: null }));
       try {
-        const [materialRes, historyRes] = await Promise.all([
+        const [materialRes, historyRes, eventsRes] = await Promise.all([
           api.get(`/materials/${id}`),
           api.get(`/materials/${id}/transactions`, { params: { limit: 20 } }),
+          api.get(`/materials/${id}/status-events`, { params: { limit: 20 } }),
         ]);
         setState({
           status: "ready",
           material: materialRes.data.material,
+          management: materialRes.data.management,
           transactions: historyRes.data.transactions,
+          events: eventsRes.data.events,
           error: null,
         });
       } catch (error) {
@@ -67,7 +85,7 @@ export default function MaterialDetailPage() {
     [load]
   );
 
-  const { material, transactions } = state;
+  const { material, management, transactions, events } = state;
   const isStaff = session.user?.role === "STAFF_WAREHOUSE";
 
   return (
@@ -91,6 +109,14 @@ export default function MaterialDetailPage() {
 
         {session.status === "ready" && material && state.status !== "error" && (
           <>
+            {material.isArchived && (
+              <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+                Material ini diarsipkan{material.archivedAt ? ` sejak ${formatDateTime(material.archivedAt)}` : ""}. Material
+                arsip tidak dapat dipakai untuk Stock In, Stock Out, atau Stock Opname baru, dan datanya tidak dapat
+                diubah sebelum diaktifkan kembali.
+              </p>
+            )}
+
             <section aria-labelledby="material-title" className="grid gap-4 md:grid-cols-[1fr_1fr]">
               <Card>
                 <CardHeader>
@@ -117,54 +143,100 @@ export default function MaterialDetailPage() {
                     </div>
                   </dl>
                   <div>
-                    <StockStatusBadge status={material.stockStatus} />
+                    {material.isArchived ? (
+                      <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold">
+                        Diarsipkan
+                      </span>
+                    ) : (
+                      <StockStatusBadge status={material.stockStatus} />
+                    )}
                   </div>
                   {material.isFrozen && (
                     <p className="text-sm text-amber-900">Material sedang dalam Stock Opname aktif; stok dibekukan.</p>
+                  )}
+                  {isStaff && !material.isArchived && (
+                    <Button asChild variant="outline" size="sm" className="justify-self-start">
+                      <Link href={`/materials/${material.id}/edit`}>Ubah data material</Link>
+                    </Button>
                   )}
                 </CardContent>
               </Card>
 
               {isStaff ? (
                 <div className="grid content-start gap-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>
-                        <h2 className="m-0 text-lg">Stock In</h2>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {material.isFrozen ? (
-                        <p className="text-sm text-muted-foreground">Stock In tidak tersedia selama Stock Opname aktif.</p>
-                      ) : (
-                        <StockInForm
-                          material={material}
-                          userId={session.user.id}
-                          onSuccess={() => load({ quiet: true })}
-                          onAuthError={handleAuthError}
-                        />
-                      )}
-                    </CardContent>
-                  </Card>
+                  {material.isArchived ? (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>
+                          <h2 className="m-0 text-lg">Transaksi stok</h2>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground">
+                          Stock In dan Stock Out tidak tersedia untuk material arsip. Aktifkan kembali material lebih
+                          dulu.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>
+                            <h2 className="m-0 text-lg">Stock In</h2>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {material.isFrozen ? (
+                            <p className="text-sm text-muted-foreground">Stock In tidak tersedia selama Stock Opname aktif.</p>
+                          ) : (
+                            <StockInForm
+                              material={material}
+                              userId={session.user.id}
+                              onSuccess={() => load({ quiet: true })}
+                              onAuthError={handleAuthError}
+                            />
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>
+                            <h2 className="m-0 text-lg">Stock Out</h2>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {material.isFrozen ? (
+                            <p className="text-sm text-muted-foreground">Stock Out tidak tersedia selama Stock Opname aktif.</p>
+                          ) : (
+                            <StockOutForm
+                              material={material}
+                              userId={session.user.id}
+                              onSuccess={() => load({ quiet: true })}
+                              onRejected={handleRejected}
+                              onAuthError={handleAuthError}
+                            />
+                          )}
+                        </CardContent>
+                      </Card>
+                    </>
+                  )}
 
                   <Card>
                     <CardHeader>
                       <CardTitle>
-                        <h2 className="m-0 text-lg">Stock Out</h2>
+                        <h2 className="m-0 text-lg">{material.isArchived ? "Aktifkan kembali" : "Arsip dan hapus"}</h2>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {material.isFrozen ? (
-                        <p className="text-sm text-muted-foreground">Stock Out tidak tersedia selama Stock Opname aktif.</p>
-                      ) : (
-                        <StockOutForm
-                          material={material}
-                          userId={session.user.id}
-                          onSuccess={() => load({ quiet: true })}
-                          onRejected={handleRejected}
-                          onAuthError={handleAuthError}
-                        />
-                      )}
+                      <MaterialStatusPanel
+                        material={material}
+                        management={management}
+                        onChanged={load}
+                        onDeleted={() => router.replace("/materials")}
+                        onAuthError={handleAuthError}
+                      />
                     </CardContent>
                   </Card>
                 </div>
@@ -178,7 +250,7 @@ export default function MaterialDetailPage() {
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
                       Anda masuk sebagai Owner. Owner dapat melihat stok dan histori, tetapi tidak dapat mencatat Stock In
-                      maupun Stock Out.
+                      maupun Stock Out atau mengubah material.
                     </p>
                   </CardContent>
                 </Card>
@@ -221,6 +293,37 @@ export default function MaterialDetailPage() {
                 </div>
               )}
             </section>
+
+            {events.length > 0 && (
+              <section aria-labelledby="status-history-title" className="grid gap-3">
+                <h2 id="status-history-title" className="text-lg font-semibold">
+                  Riwayat arsip
+                </h2>
+                <div className="overflow-x-auto rounded-xl border bg-card">
+                  <table className="w-full text-sm">
+                    <caption className="sr-only">Riwayat arsip {material.name}</caption>
+                    <thead className="bg-muted text-left">
+                      <tr>
+                        <th scope="col" className="px-4 py-3 font-semibold">Waktu</th>
+                        <th scope="col" className="px-4 py-3 font-semibold">Peristiwa</th>
+                        <th scope="col" className="px-4 py-3 font-semibold">Alasan</th>
+                        <th scope="col" className="px-4 py-3 font-semibold">Oleh</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {events.map((event) => (
+                        <tr key={event.id} className="border-t">
+                          <td className="px-4 py-3 whitespace-nowrap">{formatDateTime(event.createdAt)}</td>
+                          <td className="px-4 py-3">{STATUS_EVENT_LABEL[event.type] ?? event.type}</td>
+                          <td className="px-4 py-3 whitespace-pre-line">{event.reason}</td>
+                          <td className="px-4 py-3">{event.createdByMe ? "Anda" : "Pengguna lain"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
           </>
         )}
       </main>
