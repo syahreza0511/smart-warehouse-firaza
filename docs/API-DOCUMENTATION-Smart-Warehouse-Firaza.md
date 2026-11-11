@@ -4,6 +4,8 @@
 
 ## 1. API Overview
 
+> **Catatan status (11 November 2026):** dokumen ini adalah rancangan awal (React + Vite, Express, Prisma, JWT) dan tidak menggambarkan implementasi. Daftar endpoint `/api/v1` yang benar-benar diimplementasikan (Next.js Route Handlers, Supabase Auth, cookie `HttpOnly`) ada di README, bagian "REST API"; keputusan teknologi ada di STACK-DECISION-LOG (ADR-05, ADR-15 sampai ADR-17).
+
 Dokumen ini menjelaskan rancangan REST API untuk aplikasi Smart
 Warehouse Firaza.
 

@@ -676,6 +676,28 @@ Format setiap ADR (Architecture Decision Record): keputusan, sumber, alasan, tra
   - Keputusan arsip bukti EXEC (O5).
   - Pembaruan 4 November 2026: verifikasi browser Stock Out dan uji SQL boundary **Selesai di lokal** (P0-TEST-02, stack uji sekali pakai).
 
+### ADR-17 — Web MVP: Manajemen Material, Stock Opname, dan Dashboard (status 11 November 2026)
+
+1. **Tanggal:** 10–11 November 2026 (checkpoint B3 sampai B6-S1). ID grup capstone: DB15-I015.
+2. **Yang diimplementasikan (lokal, belum di-deploy):**
+   - Manajemen material dan kategori baca-saja: migration `20261110090000_material_management.sql` (SHA-256 `58952fe99c2b6267e059258987e8dc751364cca5aa1bdf1e3fab88c8c63d91d3`).
+   - Stock Opname berbasis sesi: migration `20261110120000_stock_opname.sql` (SHA-256 `ab34b26548c44241efb444945b59333f50075c5fd3c55a341b8748b342623e40`).
+   - Dashboard (`GET /api/v1/dashboard`, `/dashboard`) tanpa migration; total dihitung tepat oleh database dari `material_stock_status`.
+   - Pola yang sama dengan ADR-09, ADR-13, dan ADR-15: wrapper `SECURITY INVOKER` di `public`, implementasi `SECURITY DEFINER` di `app_private`, tanpa hak tulis langsung untuk role API, RLS hanya untuk SELECT.
+3. **Keputusan Owner yang diterapkan** [KEPUTUSAN]:
+   - OD-01: material sesi Stock Opname dipilih saat sesi dibuat; tidak ada penambahan atau penghapusan item sesudahnya (mempersempit PRD FR-OPN-03).
+   - OD-02/OD-16: hanya pembuat sesi yang mengisi hasil hitung dan memposting; Staff Warehouse lain dapat membatalkan dengan alasan.
+   - OD-05: material yang sedang dibekukan tidak dapat diarsipkan.
+   - OD-17: stok awal dicatat sebagai Stock In dengan catatan "Saldo awal"; tipe `OPENING_BALANCE` tidak dipakai.
+   - OD-19: kategori hanya dibaca oleh aplikasi; ditulis melalui SQL tepercaya.
+   - OD-20: **disetujui Owner pada 11 November 2026 (B4-S4).** Pembuatan sesi Stock Opname memakai `app_private.idempotency_requests` (operasi `create_stock_opname`, daftar material diurutkan sebelum di-hash). Pengiriman ulang dengan key dan payload sama mengembalikan respons pembuatan pertama, termasuk status `ACTIVE` saat itu, walaupun sesi sudah diposting atau dibatalkan; status terkini dibaca dari detail sesi. Key sama dengan payload atau operasi berbeda ditolak. Tidak ada pengiriman ulang otomatis. Retensi tetap tanpa kedaluwarsa untuk MVP. Komentar header migration tujuh masih menyebut OD-20 "provisional" karena checksum file migration dibekukan; catatan ini yang berlaku.
+   - OD-28: pelaku ditampilkan sebagai "Anda" atau "Pengguna lain"; identitas asli tetap tersimpan di database.
+4. **Ditunda dari MVP:** koreksi transaksi (FR-COR), Catatan Owner (FR-NOTE), laporan transaksi dan ekspor (FR-RPT-02), pencarian dan filter (FR-SRCH), histori transaksi global dengan filter (FR-HIS-02), widget pergerakan stok (FR-DASH-03), penulisan kategori dari aplikasi (FR-CAT-01), dan antarmuka manajemen akun. Penundaan ini mengikuti pembatasan scope Owner (Web MVP untuk capstone); requirement asli di PRD tidak dihapus.
+5. **Masih terbuka (belum diputuskan):** perubahan metadata material saat dibekukan (perilaku saat ini: nama, kategori, dan stok minimum dapat diubah; satuan terkunci), perlindungan perubahan bersamaan atas metadata material (saat ini perubahan terakhir menang), dan L-7 (alasan pembatalan dirapikan oleh API tetapi tidak oleh fungsi database).
+6. **Verifikasi (semua lokal, stack Supabase terisolasi, data sintetis):** harness HTTP Material CRUD 144/144 dan Stock Opname 303/303, QA browser Chrome untuk tiga peran di 390/768/1280 piksel, smoke test dashboard 36/36, unit test 163/163, build produksi lulus. Belum ada verifikasi di Supabase cloud, Vercel, maupun produksi.
+7. **Keterbatasan yang diketahui:** daftar material tanpa paginasi dan dibatasi `max_rows` PostgREST (1000); tabel perhatian dashboard maksimal 50 baris dengan total; daftar sesi Stock Opname 100 terbaru; draf hitungan dipulihkan hanya di tab yang sama (sessionStorage, 8 jam).
+8. **Tindak lanjut:** integrasi Git melalui pull request, migration 6 lalu 7 ke Supabase cloud dengan preflight terpisah (jumlah fungsi `public`, pemilik `postgres`, riwayat lima migration), seed kategori dan provisioning akun di cloud, deploy Vercel, dan smoke test produksi. Sinkronisasi DATABASE-DESIGN §7.2, §9.1, §11.3, FEATURE-SPECIFICATION §10, dan dokumen API lama ditunda ke pembaruan dokumentasi berikutnya.
+
 ## Kepatuhan Checklist Tech Stack
 
 Sumber: `List Tech Stack [Dicoding Bootcamp Batch 15] - Tipe Capstone_ Individu.pdf`, halaman 1, kolom Full-Stack Web Developer [PDF hlm.1]. Status "Direncanakan" berarti belum diimplementasikan maupun diuji.
@@ -701,10 +723,10 @@ Sumber: `List Tech Stack [Dicoding Bootcamp Batch 15] - Tipe Capstone_ Individu.
 
 | Side Quest | Rencana | Status |
 |---|---|---|
-| Antarmuka responsif | PRD NFR-05 | Direncanakan |
+| Antarmuka responsif | PRD NFR-05 | Diverifikasi lokal di Chrome pada 390, 768, dan 1280 piksel (11 November 2026, ADR-17); browser lain belum diuji |
 | Framework untuk One Man Developer (Next JS, dll.) | ADR-01 | Dipakai: Next.js 16 App Router (fondasi di `main` melalui PR #1; fitur di-commit lokal C-4 sampai C-6) |
 | API dengan Express atau framework lain yang relevan (gaya FE & BE) | Route Handlers (ADR-05) | Belum terkonfirmasi apakah termasuk "framework lain yang relevan" |
-| Git dan GitHub | Repository GitHub proyek | Dipakai: repository GitHub dengan PR #1 dan #2 di `main`; commit sejak C-1 (4 November 2026) di branch `feat/supabase-foundation` di-push ke GitHub dan diajukan melalui PR #3 (CI build lulus; belum di-merge ke `main`) |
+| Git dan GitHub | Repository GitHub proyek | Dipakai: PR #1 sampai #4 di-merge ke `main`; manajemen material, Stock Opname, dan dashboard di-commit lokal di branch `feat/web-mvp-material-opname` (11 November 2026, belum di-push) |
 | CSS Framework dan Modern UI Components | Tailwind CSS v4 dan shadcn/ui (ADR-12) | Pilihan disetujui; dipakai pada antarmuka login, daftar dan detail material, serta Stock In dan Stock Out (C-4 sampai C-6, lokal); responsivitas belum diverifikasi |
 | Schema Validation pada backend | Zod v4 (ADR-12) | Pilihan disetujui; diimplementasikan di `lib/validation/schemas.js` (C-4, lokal) |
 | HTTP Library (Axios) | Axios (ADR-12) | Pilihan disetujui; diimplementasikan di `lib/api-client.js` (C-4, lokal) |
