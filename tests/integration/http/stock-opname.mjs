@@ -11,7 +11,12 @@
 //   FIRAZA_ALLOW_B4S4=B4-S4 node tests/integration/http/stock-opname.mjs
 //
 // Order (fail-closed; no request is ever retried automatically):
-//   1. Guards: DB container, system_identifier, seven migrations, port 3001
+//   0. Target verification (local-target.mjs, read only): config.toml,
+//      `supabase status`, Docker labels and port bindings, and the PostgreSQL
+//      system_identifier must all describe the same isolated stack. Nothing
+//      below runs unless it passes; database access uses only the verified
+//      container id, and keys are read only for the verified target.
+//   1. Guards: seven migrations, port 3001
 //      free, and a database without any B4-S4 fixture or Stock Opname row
 //      (so a second run refuses to start).
 //   2. Fixtures (Owner-approved, B4-S4): new random passwords for the two
@@ -36,24 +41,31 @@
 // Exit codes: 0 all PASS; 1 FAIL or abort. Do not rerun after an abort:
 // reconcile read-only first.
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync } from "node:fs";
 import { randomBytes, randomUUID } from "node:crypto";
 import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  TargetVerificationError,
+  assertVerified,
+  createRealDeps,
+  readLocalKeys,
+  runSupabaseStatus,
+  verifyLocalTarget,
+} from "./local-target.mjs";
 
 const OPT_IN = "B4-S4";
 const BASE_URL = "http://127.0.0.1:3001";
-// Local-only target, configured per machine (never committed values). Each
-// one is validated in checkConfig() before the harness touches anything.
+// Local-only target, configured per machine (never committed values). These
+// are expectations only; verifyLocalTarget() proves them before anything else.
 //   FIRAZA_TEST_API_URL                 http://127.0.0.1:<port> of the isolated stack
-//   FIRAZA_TEST_DB_CONTAINER            its supabase_db_* container
+//   FIRAZA_TEST_DB_CONTAINER            its supabase_db_<project_id> container
 //   FIRAZA_TEST_SYSTEM_IDENTIFIER       expected PostgreSQL system_identifier
 //   FIRAZA_TEST_SUPABASE_WORKDIR        absolute path of its Supabase workdir
 const API_URL = process.env.FIRAZA_TEST_API_URL ?? "";
-const DB_CONTAINER = process.env.FIRAZA_TEST_DB_CONTAINER ?? "";
-const SYSTEM_IDENTIFIER = process.env.FIRAZA_TEST_SYSTEM_IDENTIFIER ?? "";
-const WORKDIR = process.env.FIRAZA_TEST_SUPABASE_WORKDIR ?? "";
+// Set only by verifyLocalTarget(); psql, the lock holder, and the keys refuse
+// to work without it.
+let TARGET = null;
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const SUPABASE_BIN = path.join(REPO_ROOT, "node_modules/.bin/supabase");
 const NEXT_BIN = path.join(REPO_ROOT, "node_modules/.bin/next");
@@ -95,14 +107,15 @@ const rpcErr = (r, s, sqlstate, message) => r.status === s && r.json?.code === s
 const denied = (r) => (r.status === 401 || r.status === 403) && r.json?.code === "42501";
 
 // ---------------------------------------------------------------------------
-// Database access (fixed B container only)
+// Database access (verified container id only)
 // ---------------------------------------------------------------------------
 function psql(sql, { readOnly }) {
+  const { dbContainerId } = assertVerified(TARGET);
   const input = readOnly ? `begin transaction read only;\n${sql}\nrollback;\n` : `${sql}\n`;
   try {
     return execFileSync(
       "docker",
-      ["exec", "-i", DB_CONTAINER, "psql", "-U", "postgres", "-d", "postgres", "-qAtX", "-F", "|", "-v", "ON_ERROR_STOP=1"],
+      ["exec", "-i", dbContainerId, "psql", "-U", "postgres", "-d", "postgres", "-qAtX", "-F", "|", "-v", "ON_ERROR_STOP=1"],
       { input, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] }
     ).trim();
   } catch {
@@ -175,9 +188,10 @@ function invariants() {
 const LOCKABLE = new Set(["public.materials", "public.stock_opname"]);
 function holdLock(table, id, seconds) {
   if (!LOCKABLE.has(table)) fail("Lock target not allowed.");
+  const { dbContainerId } = assertVerified(TARGET);
   const child = spawn(
     "docker",
-    ["exec", "-i", "-e", `PGAPPNAME=${HOLDER_APP}`, DB_CONTAINER, "psql", "-U", "postgres", "-d", "postgres", "-qAtX", "-v", "ON_ERROR_STOP=1"],
+    ["exec", "-i", "-e", `PGAPPNAME=${HOLDER_APP}`, dbContainerId, "psql", "-U", "postgres", "-d", "postgres", "-qAtX", "-v", "ON_ERROR_STOP=1"],
     { stdio: ["pipe", "ignore", "ignore"] }
   );
   child.stdin.end(`begin;\nselect 1 from ${table} where id = ${lit(id)} for update;\nselect pg_sleep(${seconds});\nrollback;\n`);
@@ -213,22 +227,14 @@ async function overlapped(table, id, seconds, makeRequests) {
 // ---------------------------------------------------------------------------
 // Keys, server, clients
 // ---------------------------------------------------------------------------
+// Only for the verified target, and only if `supabase status` still reports
+// the verified endpoints.
 function localKeys() {
-  let out;
   try {
-    out = execFileSync(SUPABASE_BIN, ["status", "-o", "json", "--workdir", WORKDIR], {
-      cwd: "/",
-      env: { HOME: process.env.HOME, PATH: process.env.PATH, DO_NOT_TRACK: "1" },
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    });
-  } catch {
-    fail("supabase status failed (details not shown); aborting.");
+    return readLocalKeys(TARGET, runSupabaseStatus(SUPABASE_BIN));
+  } catch (error) {
+    fail(`Local keys refused: ${error instanceof TargetVerificationError ? error.message : "unexpected error (details not shown)"}`);
   }
-  const j = JSON.parse(out.slice(out.indexOf("{")));
-  if (j.API_URL !== API_URL) fail(`Unexpected API URL; only ${API_URL} is allowed.`);
-  for (const k of ["ANON_KEY", "SERVICE_ROLE_KEY", "PUBLISHABLE_KEY"]) if (!j[k]) fail(`Missing ${k}.`);
-  return { anon: j.ANON_KEY, service: j.SERVICE_ROLE_KEY, publishable: j.PUBLISHABLE_KEY };
 }
 
 function portFree(port) {
@@ -349,25 +355,23 @@ const password = () => `B4s4-${randomBytes(24).toString("base64url")}`;
 // Main
 // ---------------------------------------------------------------------------
 const runSessions = new Set();
-// Refuses to run unless the target is explicitly configured, local, and an
-// isolated stack: loopback API only, a supabase_db_* container, a numeric
-// system_identifier (compared with the database before any write), and an
-// existing Supabase workdir.
-function checkConfig() {
-  if (!/^http:\/\/127\.0\.0\.1:\d{2,5}$/.test(API_URL)) fail("Set FIRAZA_TEST_API_URL to http://127.0.0.1:<port> of the isolated stack.");
-  if (!/^supabase_db_[A-Za-z0-9_.-]+$/.test(DB_CONTAINER)) fail("Set FIRAZA_TEST_DB_CONTAINER to the isolated stack's supabase_db_* container.");
-  if (!/^\d{10,20}$/.test(SYSTEM_IDENTIFIER)) fail("Set FIRAZA_TEST_SYSTEM_IDENTIFIER to the expected PostgreSQL system_identifier.");
-  if (!path.isAbsolute(WORKDIR) || !existsSync(path.join(WORKDIR, "supabase", "config.toml"))) {
-    fail("Set FIRAZA_TEST_SUPABASE_WORKDIR to the absolute path of the isolated stack's Supabase workdir.");
+// Refuses to run unless config.toml, `supabase status`, Docker metadata, and
+// the PostgreSQL system_identifier all prove one isolated local stack (see
+// local-target.mjs). No fallback and no retry.
+function verifyTarget() {
+  try {
+    TARGET = verifyLocalTarget(process.env, createRealDeps({ supabaseBin: SUPABASE_BIN }));
+  } catch (error) {
+    fail(`Target verification failed: ${error instanceof TargetVerificationError ? error.message : "unexpected error (details not shown)"} Nothing was written.`);
   }
 }
 
 async function main() {
   if (process.env.FIRAZA_ALLOW_B4S4 !== OPT_IN) fail(`Set FIRAZA_ALLOW_B4S4=${OPT_IN} to run.`);
-  checkConfig();
+  verifyTarget();
 
   // ---- Preflight ------------------------------------------------------------
-  check("P1", dbRead("select system_identifier from pg_control_system();") === SYSTEM_IDENTIFIER, "system_identifier is database B", "match");
+  check("P1", TARGET?.apiUrl === API_URL, "target verified: config.toml, supabase status, Docker bindings, system_identifier", `project=${TARGET?.projectId}`);
   const migs = dbRead("select count(*) || '/' || max(version) from supabase_migrations.schema_migrations;");
   check("P2", migs === "7/20261110120000", "seven migrations, last is 20261110120000", migs);
   const clean = dbRead(`select (select count(*) from public.stock_opname) || '/' || (select count(*) from public.materials where name like '${PREFIX}%') || '/' ||

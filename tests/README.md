@@ -16,7 +16,7 @@ Test harness for Smart Warehouse Firaza. Only the unit tests run in CI (GitHub A
 node --test 'tests/unit/*.test.mjs'
 ```
 
-They use mocks and source text: request schemas, the command layers behind the Route Handlers (mocked Supabase client), read mappers, client outcome handling (create attempts, count drafts, leave guard), the dashboard read model, and static checks of the Stock Opname migration. They do not prove database commits, row locks, RLS, or authorization in PostgreSQL; those are integration tests.
+They use mocks and source text: request schemas, the command layers behind the Route Handlers (mocked Supabase client), read mappers, client outcome handling (create attempts, count drafts, leave guard), the dashboard read model, static checks of the Stock Opname migration, and the integration target verifier (`local-target.test.mjs`, with fixture CLI and Docker outputs; it does not run a harness). They do not prove database commits, row locks, RLS, or authorization in PostgreSQL; those are integration tests.
 
 Node prints a `MODULE_TYPELESS_PACKAGE_JSON` warning because the app's `.js` modules use ESM syntax without `"type": "module"` in `package.json`. It does not affect the results.
 
@@ -67,7 +67,13 @@ FIRAZA_TEST_SUPABASE_WORKDIR=/absolute/path/to/isolated/workdir \
 FIRAZA_ALLOW_B3R7=B3-R7 node tests/integration/http/material-crud.mjs   # or FIRAZA_ALLOW_B4S4=B4-S4 … stock-opname.mjs
 ```
 
-- **Never against a shared or cloud database.** Both refuse to start unless the target is explicitly configured: a loopback API URL, a `supabase_db_*` container, an expected PostgreSQL `system_identifier` that must match the database before anything is written, and an existing Supabase workdir. Each also needs its own opt-in variable.
+- **Never against a shared or cloud database.** Each needs its own opt-in variable. The four `FIRAZA_TEST_*` values are only expectations: before any key is read, any Auth Admin call is made, or anything is written, `local-target.mjs` must prove that they describe one isolated stack, read only:
+  - the workdir's real `supabase/config.toml` (not a symlink): its `project_id`, `[api]` port, and `[db]` port; the container must be `supabase_db_<project_id>`;
+  - `supabase status -o json --workdir …`: the same API URL, and a database at `127.0.0.1` on the configured port (keys and the password are dropped while parsing);
+  - Docker: `supabase_kong_<project_id>` and `supabase_db_<project_id>` carry that project's CLI project and workdir labels, publish the API and PostgreSQL ports on loopback only, are the only containers publishing those ports, and share a network;
+  - the PostgreSQL `system_identifier`, read in a READ ONLY transaction from that container.
+
+  Any missing or inconsistent evidence aborts the run; there is no fallback, retry, or default target. Afterwards all `psql` access uses the verified container id, and the keys are read only if `supabase status` still reports the verified endpoints. This closes finding F-1 (B6-S3B). Neither harness has been rerun since this change.
 - **One-shot.** `material-crud.mjs` requires a clean database with exactly the six migrations up to `20261110090000`; `stock-opname.mjs` refuses once its `[DEMO] B4S4` fixtures or any Stock Opname row exist. After one run, a second run is refused; never clean the database to force one.
 - **Secrets.** Local keys are read from `supabase status` for the configured workdir and passed only to the child Next.js process; DEMO passwords are random per run and kept in memory. Nothing secret is printed or written.
 - **Real concurrency** (`stock-opname.mjs`): a separate `psql` session holds a row lock on a synthetic row (`SELECT … FOR UPDATE`, then `ROLLBACK`; no data change) while overlapping requests queue behind it.
