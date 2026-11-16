@@ -22,10 +22,10 @@ function pendingCreateFor(userId) {
 }
 
 const FILTERS = [
-  { key: "", label: "Semua", empty: "Belum ada sesi Stock Opname." },
-  { key: "ACTIVE", label: "Aktif", empty: "Tidak ada sesi Stock Opname yang aktif." },
-  { key: "POSTED", label: "Diposting", empty: "Belum ada sesi yang diposting." },
-  { key: "CANCELLED", label: "Dibatalkan", empty: "Belum ada sesi yang dibatalkan." },
+  { key: "", label: "Semua", empty: "Belum ada Sesi Pemeriksaan." },
+  { key: "ACTIVE", label: "Berlangsung", empty: "Tidak ada Sesi Pemeriksaan yang berlangsung." },
+  { key: "POSTED", label: "Difinalisasi", empty: "Belum ada Sesi Pemeriksaan yang difinalisasi." },
+  { key: "CANCELLED", label: "Dibatalkan", empty: "Belum ada Sesi Pemeriksaan yang dibatalkan." },
 ];
 
 // Stock Opname sessions (FR-OPN-01, FR-OPN-02). Owner and Staff read; only
@@ -74,14 +74,15 @@ export default function StockOpnamesPage() {
       <main className="mx-auto grid max-w-5xl gap-6 px-4 py-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl">Stock Opname</h1>
+            <h1 className="text-2xl md:text-3xl">Pemeriksaan Stok</h1>
             <p className="text-muted-foreground">
-              Sesi penghitungan fisik. Material di sesi aktif dibekukan sampai sesi diposting atau dibatalkan.
+              Sesi Pemeriksaan untuk penghitungan fisik. Material di Sesi Pemeriksaan yang berlangsung dibekukan sampai
+              sesi difinalisasi atau dibatalkan.
             </p>
           </div>
           {isStaff && (
             <Button asChild>
-              <Link href="/stock-opnames/new">Mulai sesi baru</Link>
+              <Link href="/stock-opnames/new">Mulai Pemeriksaan</Link>
             </Button>
           )}
         </div>
@@ -94,23 +95,24 @@ export default function StockOpnamesPage() {
             {pendingCreate && (
               <div role="alert" className="grid gap-2 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
                 <p>
-                  Ada pembuatan sesi ({pendingCreate.payload.materialIds.length} material) yang statusnya belum pasti di
-                  tab ini. Periksa sesi aktif di bawah, lalu selesaikan di halaman pemulihan.
+                  Ada permintaan memulai Sesi Pemeriksaan ({pendingCreate.payload.materialIds.length} material) yang
+                  statusnya belum pasti di tab ini. Periksa Sesi Pemeriksaan yang berlangsung di bawah, lalu selesaikan di
+                  halaman pemulihan.
                 </p>
                 <Button asChild size="sm" variant="outline" className="justify-self-start">
-                  <Link href="/stock-opnames/new">Buka pemulihan pembuatan sesi</Link>
+                  <Link href="/stock-opnames/new">Buka pemulihan permintaan Sesi Pemeriksaan</Link>
                 </Button>
               </div>
             )}
 
             {!isStaff && (
               <p className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-                Anda masuk sebagai Owner: Anda dapat memantau sesi Stock Opname, tetapi tidak dapat membuat, menghitung,
-                memposting, atau membatalkan sesi.
+                Anda masuk sebagai Owner: Anda dapat memantau Pemeriksaan Stok, tetapi tidak dapat memulai, menghitung,
+                memfinalisasi, atau membatalkan Sesi Pemeriksaan.
               </p>
             )}
 
-            <div role="group" aria-label="Filter status sesi" className="flex flex-wrap gap-2">
+            <div role="group" aria-label="Filter status Sesi Pemeriksaan" className="flex flex-wrap gap-2">
               {FILTERS.map((item) => (
                 <Button
                   key={item.key || "all"}
@@ -125,7 +127,7 @@ export default function StockOpnamesPage() {
               ))}
             </div>
 
-            {state.status === "loading" && <LoadingState label="Memuat sesi Stock Opname…" />}
+            {state.status === "loading" && <LoadingState label="Memuat Pemeriksaan Stok…" />}
             {state.status === "error" && <ErrorState message={state.error.message} onRetry={load} />}
             {state.status === "ready" && state.opnames.length === 0 && (
               <p className="rounded-lg border bg-card p-6 text-center text-muted-foreground">
@@ -135,7 +137,7 @@ export default function StockOpnamesPage() {
             {state.status === "ready" && state.opnames.length > 0 && (
               <div className="overflow-x-auto rounded-xl border bg-card">
                 <table className="w-full text-sm">
-                  <caption className="sr-only">Daftar sesi Stock Opname</caption>
+                  <caption className="sr-only">Daftar Sesi Pemeriksaan</caption>
                   <thead className="bg-muted text-left">
                     <tr>
                       <th scope="col" className="px-4 py-3 font-semibold">Dibuat</th>
@@ -172,7 +174,8 @@ export default function StockOpnamesPage() {
             )}
             {state.status === "ready" && state.opnames.length >= OPNAME_LIST_LIMIT && (
               <p className="text-sm text-muted-foreground">
-                Menampilkan {OPNAME_LIST_LIMIT} sesi terbaru. Sesi yang lebih lama belum dapat ditampilkan pada versi ini.
+                Menampilkan {OPNAME_LIST_LIMIT} Sesi Pemeriksaan terbaru. Sesi yang lebih lama belum dapat ditampilkan pada
+                versi ini.
               </p>
             )}
           </>

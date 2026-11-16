@@ -92,7 +92,7 @@ export default function MaterialDetailPage() {
     <>
       <AppHeader user={session.user} />
       <main className="mx-auto grid max-w-5xl gap-6 px-4 py-8">
-        <Link href="/materials" className="text-sm text-forest underline-offset-4 hover:underline">
+        <Link href="/materials" className="inline-flex min-h-11 items-center justify-self-start text-sm text-forest underline-offset-4 hover:underline lg:min-h-0">
           ← Kembali ke daftar material
         </Link>
 
@@ -112,7 +112,7 @@ export default function MaterialDetailPage() {
             {material.isArchived && (
               <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
                 Material ini diarsipkan{material.archivedAt ? ` sejak ${formatDateTime(material.archivedAt)}` : ""}. Material
-                arsip tidak dapat dipakai untuk Stock In, Stock Out, atau Stock Opname baru, dan datanya tidak dapat
+                arsip tidak dapat dipakai untuk Stock In, Stock Out, atau Pemeriksaan Stok baru, dan datanya tidak dapat
                 diubah sebelum diaktifkan kembali.
               </p>
             )}
@@ -152,7 +152,7 @@ export default function MaterialDetailPage() {
                     )}
                   </div>
                   {material.isFrozen && (
-                    <p className="text-sm text-amber-900">Material sedang dalam Stock Opname aktif; stok dibekukan.</p>
+                    <p className="text-sm text-amber-900">Material sedang dalam Sesi Pemeriksaan yang berlangsung; stok dibekukan.</p>
                   )}
                   {isStaff && !material.isArchived && (
                     <Button asChild variant="outline" size="sm" className="justify-self-start">
@@ -188,7 +188,7 @@ export default function MaterialDetailPage() {
                         </CardHeader>
                         <CardContent>
                           {material.isFrozen ? (
-                            <p className="text-sm text-muted-foreground">Stock In tidak tersedia selama Stock Opname aktif.</p>
+                            <p className="text-sm text-muted-foreground">Stock In tidak tersedia selama Sesi Pemeriksaan berlangsung.</p>
                           ) : (
                             <StockInForm
                               material={material}
@@ -208,7 +208,7 @@ export default function MaterialDetailPage() {
                         </CardHeader>
                         <CardContent>
                           {material.isFrozen ? (
-                            <p className="text-sm text-muted-foreground">Stock Out tidak tersedia selama Stock Opname aktif.</p>
+                            <p className="text-sm text-muted-foreground">Stock Out tidak tersedia selama Sesi Pemeriksaan berlangsung.</p>
                           ) : (
                             <StockOutForm
                               material={material}

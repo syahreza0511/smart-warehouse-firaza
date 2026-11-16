@@ -22,7 +22,7 @@ function DraftRecoveryNotice({ notice, onClose, onDiscardStored }) {
     restored: () =>
       [
         notice.restored + notice.conflicts > 0 &&
-          `${notice.restored + notice.conflicts} hasil hitung dipulihkan dari draf di tab ini dan BELUM disimpan ke server. Simpan atau buang sebelum posting.`,
+          `${notice.restored + notice.conflicts} hasil hitung dipulihkan dari draf di tab ini dan BELUM disimpan ke server. Simpan atau buang sebelum finalisasi.`,
         notice.conflicts > 0 &&
           `${notice.conflicts} di antaranya berkonflik karena nilai di server sudah berubah; tinjau baris bertanda konflik.`,
         notice.alreadySaved > 0 &&
@@ -32,10 +32,10 @@ function DraftRecoveryNotice({ notice, onClose, onDiscardStored }) {
         .join(" "),
     expired: () => "Draf hitungan di tab ini berumur lebih dari 8 jam, jadi tidak dipulihkan dan sudah dihapus.",
     corrupt: () => "Draf hitungan di tab ini tidak dapat dibaca, jadi tidak dipulihkan dan sudah dihapus.",
-    incompatible: () => "Draf hitungan di tab ini tidak sesuai dengan akun atau sesi ini, jadi tidak dipulihkan dan sudah dihapus.",
-    terminal: () => "Sesi ini sudah tidak dapat dihitung, jadi draf hitungan lama di tab ini dihapus.",
+    incompatible: () => "Draf hitungan di tab ini tidak sesuai dengan akun atau Sesi Pemeriksaan ini, jadi tidak dipulihkan dan sudah dihapus.",
+    terminal: () => "Sesi Pemeriksaan ini sudah tidak dapat dihitung, jadi draf hitungan lama di tab ini dihapus.",
     mismatch: () =>
-      "Draf hitungan di tab ini tidak cocok dengan daftar material sesi ini, jadi tidak dipulihkan. Hapus draf lokal itu untuk melanjutkan; nilai di server tidak berubah.",
+      "Draf hitungan di tab ini tidak cocok dengan daftar material Sesi Pemeriksaan ini, jadi tidak dipulihkan. Hapus draf lokal itu untuk melanjutkan; nilai di server tidak berubah.",
   }[notice.kind]?.();
   if (!text) return null;
   const warn = notice.kind === "mismatch" || notice.conflicts > 0 || notice.kind === "restored";
@@ -44,11 +44,11 @@ function DraftRecoveryNotice({ notice, onClose, onDiscardStored }) {
       <p>{text}</p>
       <div className="flex flex-wrap gap-3">
         {notice.kind === "mismatch" ? (
-          <button type="button" className="underline underline-offset-2" onClick={onDiscardStored}>
+          <button type="button" className="inline-flex min-h-11 items-center underline underline-offset-2 lg:min-h-0" onClick={onDiscardStored}>
             Hapus draf lokal
           </button>
         ) : (
-          <button type="button" className="underline underline-offset-2" onClick={onClose}>
+          <button type="button" className="inline-flex min-h-11 items-center underline underline-offset-2 lg:min-h-0" onClick={onClose}>
             Tutup pesan
           </button>
         )}
@@ -162,8 +162,11 @@ export default function StockOpnameDetailPage() {
     <>
       <AppHeader user={session.user} />
       <main className="mx-auto grid max-w-5xl gap-6 px-4 py-8">
-        <Link href="/stock-opnames" className="text-sm text-forest underline-offset-4 hover:underline">
-          ← Kembali ke daftar Stock Opname
+        <Link
+          href="/stock-opnames"
+          className="inline-flex min-h-11 items-center justify-self-start text-sm text-forest underline-offset-4 hover:underline lg:min-h-0"
+        >
+          ← Kembali ke daftar Pemeriksaan Stok
         </Link>
 
         {session.status === "error" && <ErrorState message={session.error.message} onRetry={session.reload} />}
@@ -171,7 +174,7 @@ export default function StockOpnameDetailPage() {
 
         {session.status === "ready" && (
           <>
-            {state.status === "loading" && <LoadingState label="Memuat sesi Stock Opname…" />}
+            {state.status === "loading" && <LoadingState label="Memuat Sesi Pemeriksaan…" />}
             {state.status === "error" && (
               <ErrorState
                 message={state.error.message}
@@ -183,12 +186,12 @@ export default function StockOpnameDetailPage() {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="grid gap-1">
                     <h1 className="flex flex-wrap items-center gap-3 text-2xl md:text-3xl">
-                      Sesi Stock Opname <OpnameStatusBadge status={opname.status} />
+                      Sesi Pemeriksaan <OpnameStatusBadge status={opname.status} />
                     </h1>
                     <p className="text-sm text-muted-foreground">
                       Dibuat {formatDateTime(opname.createdAt)} oleh {actorLabel(opname.createdByMe)}.
                       {opname.status === "POSTED" &&
-                        ` Diposting ${formatDateTime(opname.postedAt)} oleh ${actorLabel(opname.postedByMe)}.`}
+                        ` Difinalisasi ${formatDateTime(opname.postedAt)} oleh ${actorLabel(opname.postedByMe)}.`}
                       {opname.status === "CANCELLED" &&
                         ` Dibatalkan ${formatDateTime(opname.cancelledAt)} oleh ${actorLabel(opname.cancelledByMe)}.`}
                     </p>
@@ -202,14 +205,14 @@ export default function StockOpnameDetailPage() {
 
                 {opname.status === "ACTIVE" && (
                   <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">
-                    {opname.summary.itemCount} material dibekukan selama sesi ini aktif. Stock In, Stock Out, dan arsip
-                    untuk material tersebut ditolak sampai sesi diposting atau dibatalkan.
+                    {opname.summary.itemCount} material dibekukan selama Sesi Pemeriksaan ini berlangsung. Stock In, Stock
+                    Out, dan arsip untuk material tersebut ditolak sampai Sesi Pemeriksaan difinalisasi atau dibatalkan.
                   </p>
                 )}
                 {opname.status === "POSTED" && (
                   <p role="status" className="rounded-lg bg-sage/60 p-3 text-sm text-forest">
-                    Sesi diposting. Material dengan selisih tidak nol mendapat transaksi Penyesuaian; pembekuan sudah
-                    dilepas.
+                    Sesi Pemeriksaan difinalisasi. Material dengan selisih tidak nol mendapat transaksi Penyesuaian;
+                    pembekuan sudah dilepas.
                   </p>
                 )}
                 {!isStaff && (
@@ -258,13 +261,13 @@ export default function StockOpnameDetailPage() {
                   <Card>
                     <CardHeader>
                       <CardTitle>
-                        <h2 className="m-0 text-lg">Tindakan sesi</h2>
+                        <h2 className="m-0 text-lg">Tindakan Sesi Pemeriksaan</h2>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       {opname.status !== "ACTIVE" && (
                         <p className="mb-4 text-sm text-muted-foreground">
-                          Sesi ini sudah {opname.status === "POSTED" ? "diposting" : "dibatalkan"} dan tidak dapat
+                          Sesi Pemeriksaan ini sudah {opname.status === "POSTED" ? "difinalisasi" : "dibatalkan"} dan tidak dapat
                           diubah lagi.
                         </p>
                       )}

@@ -1,8 +1,8 @@
 import { cn } from "cn";
 
 export const OPNAME_STATUS = {
-  ACTIVE: { label: "Aktif", className: "bg-amber-100 text-amber-900" },
-  POSTED: { label: "Diposting", className: "bg-sage text-forest" },
+  ACTIVE: { label: "Berlangsung", className: "bg-amber-100 text-amber-900" },
+  POSTED: { label: "Difinalisasi", className: "bg-sage text-forest" },
   CANCELLED: { label: "Dibatalkan", className: "bg-muted text-muted-foreground" },
 };
 

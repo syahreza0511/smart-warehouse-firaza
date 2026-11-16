@@ -162,7 +162,7 @@ export function MaterialForm({ categories, initial, unitLocked = false, submitLa
         <FieldError id="material-unit-error" messages={errors.unit} />
         {unitLocked && (
           <p id="material-unit-locked" className="text-xs text-muted-foreground">
-            Satuan terkunci karena material sudah memiliki transaksi atau tercatat dalam Stock Opname.
+            Satuan terkunci karena material sudah memiliki transaksi atau tercatat dalam Pemeriksaan Stok.
           </p>
         )}
       </div>

@@ -82,7 +82,7 @@ function StatusChangeForm({ material, onChanged, onAuthError, onNotice }) {
       {archiving ? (
         <div className="grid gap-1 text-sm text-muted-foreground">
           <p>
-            Material arsip tidak dapat dipakai untuk Stock In, Stock Out, atau Stock Opname baru. Histori tetap
+            Material arsip tidak dapat dipakai untuk Stock In, Stock Out, atau Pemeriksaan Stok baru. Histori tetap
             tersimpan.
           </p>
           {material.currentStock !== 0 && (
@@ -92,7 +92,7 @@ function StatusChangeForm({ material, onChanged, onAuthError, onNotice }) {
             </p>
           )}
           {material.isFrozen && (
-            <p className="text-amber-900">Material sedang dalam Stock Opname aktif sehingga tidak dapat diarsipkan.</p>
+            <p className="text-amber-900">Material sedang dalam Sesi Pemeriksaan yang berlangsung sehingga tidak dapat diarsipkan.</p>
           )}
         </div>
       ) : (
@@ -166,7 +166,7 @@ function DeleteMaterial({ material, onDeleted, onChanged, onAuthError, onNotice 
   return (
     <div className="grid gap-3">
       <p className="text-sm text-muted-foreground">
-        Material ini belum memiliki riwayat transaksi, Stock Opname, maupun arsip, sehingga dapat dihapus permanen.
+        Material ini belum memiliki riwayat transaksi, Pemeriksaan Stok, maupun arsip, sehingga dapat dihapus permanen.
       </p>
       {confirming ? (
         <div role="alertdialog" aria-labelledby="delete-confirm-text" className="grid gap-3 rounded-lg bg-destructive/5 p-3">
@@ -224,7 +224,7 @@ export function MaterialStatusPanel({ material, management, onChanged, onDeleted
         />
       ) : (
         <p className="text-sm text-muted-foreground">
-          Hapus permanen tidak tersedia karena material sudah memiliki riwayat transaksi, Stock Opname, atau arsip.
+          Hapus permanen tidak tersedia karena material sudah memiliki riwayat transaksi, Pemeriksaan Stok, atau arsip.
         </p>
       )}
     </div>

@@ -138,7 +138,7 @@ export function OpnameCountForm({ opname, drafts, onDraftsChange, pending, savin
       )}
       <div className="overflow-x-auto rounded-xl border bg-card">
         <table className="w-full text-sm">
-          <caption className="sr-only">Material dalam sesi Stock Opname</caption>
+          <caption className="sr-only">Material dalam Sesi Pemeriksaan ini</caption>
           <thead className="bg-muted text-left">
             <tr>
               <th scope="col" className="px-4 py-3 font-semibold">Material</th>
@@ -167,8 +167,8 @@ export function OpnameCountForm({ opname, drafts, onDraftsChange, pending, savin
                     <span className="block text-xs text-muted-foreground">{item.unit}</span>
                     {item.stockMismatch && (
                       <span className="mt-1 block text-xs text-destructive">
-                        Stok saat ini ({formatNumber(item.currentStock)}) berbeda dari snapshot. Sesi tidak dapat
-                        diposting.
+                        Stok saat ini ({formatNumber(item.currentStock)}) berbeda dari snapshot. Sesi Pemeriksaan tidak
+                        dapat difinalisasi.
                       </span>
                     )}
                   </td>
@@ -210,7 +210,7 @@ export function OpnameCountForm({ opname, drafts, onDraftsChange, pending, savin
                               }).`}{" "}
                             <button
                               type="button"
-                              className="underline underline-offset-2"
+                              className="inline-flex min-h-11 items-center underline underline-offset-2 lg:min-h-0"
                               disabled={saving}
                               onClick={() => onDraftsChange((current) => discardDraft(current, item.id))}
                             >
@@ -221,7 +221,7 @@ export function OpnameCountForm({ opname, drafts, onDraftsChange, pending, savin
                                 {" "}
                                 <button
                                   type="button"
-                                  className="underline underline-offset-2"
+                                  className="inline-flex min-h-11 items-center underline underline-offset-2 lg:min-h-0"
                                   disabled={saving}
                                   onClick={() => onDraftsChange((current) => acknowledgeConflict(current, item))}
                                 >
@@ -254,8 +254,8 @@ export function OpnameCountForm({ opname, drafts, onDraftsChange, pending, savin
       {pending.length > 0 && (
         <div role="status" className="grid gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-950">
           <p className="font-medium">
-            {pending.length} perubahan hasil hitung belum disimpan. Posting tidak tersedia sampai perubahan disimpan atau
-            dibuang.
+            {pending.length} perubahan hasil hitung belum disimpan. Finalisasi tidak tersedia sampai perubahan disimpan
+            atau dibuang.
           </p>
           <ul className="list-disc pl-5">
             {pending.map((p) => (
@@ -297,7 +297,7 @@ export function OpnameCountForm({ opname, drafts, onDraftsChange, pending, savin
               </Button>
             )}
           {!editable && (
-            <p>Sesi ini tidak lagi dapat dihitung, sehingga perubahan ini tidak dapat disimpan.</p>
+            <p>Sesi Pemeriksaan ini tidak lagi dapat dihitung, sehingga perubahan ini tidak dapat disimpan.</p>
           )}
         </div>
       )}
@@ -319,7 +319,7 @@ export function OpnameCountForm({ opname, drafts, onDraftsChange, pending, savin
             {saving ? "Menyimpan…" : "Simpan hasil hitung"}
           </Button>
           <p className="text-sm text-muted-foreground">
-            Menyimpan hasil hitung tidak mengubah stok. Stok baru berubah saat sesi diposting.
+            Menyimpan hasil hitung tidak mengubah stok. Stok baru berubah saat Sesi Pemeriksaan difinalisasi.
           </p>
         </div>
       )}

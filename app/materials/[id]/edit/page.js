@@ -66,7 +66,7 @@ export default function EditMaterialPage() {
     <>
       <AppHeader user={session.user} />
       <main className="mx-auto grid max-w-3xl gap-6 px-4 py-8">
-        <Link href={`/materials/${id}`} className="text-sm text-forest underline-offset-4 hover:underline">
+        <Link href={`/materials/${id}`} className="inline-flex min-h-11 items-center justify-self-start text-sm text-forest underline-offset-4 hover:underline lg:min-h-0">
           ← Kembali ke detail material
         </Link>
 
@@ -101,7 +101,7 @@ export default function EditMaterialPage() {
                     <h1 className="m-0 text-2xl">Ubah material</h1>
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    Stok tidak diubah dari sini. Stok hanya berubah lewat transaksi dan Stock Opname.
+                    Stok tidak diubah dari sini. Stok hanya berubah lewat transaksi dan Pemeriksaan Stok.
                   </p>
                 </CardHeader>
                 <CardContent>

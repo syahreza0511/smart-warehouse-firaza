@@ -2,6 +2,7 @@
 
 import { Suspense, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { BrandLockup } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -55,7 +56,8 @@ function LoginForm() {
   return (
     <Card className="w-full max-w-sm border-t-6 border-t-primary">
       <CardHeader>
-        <CardTitle className="text-xl">Masuk</CardTitle>
+        <BrandLockup compact />
+        <CardTitle className="mt-4 text-xl">Masuk</CardTitle>
         <CardDescription>Smart Warehouse Firaza</CardDescription>
       </CardHeader>
       <CardContent>
