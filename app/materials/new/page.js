@@ -43,7 +43,7 @@ export default function NewMaterialPage() {
     <>
       <AppHeader user={session.user} />
       <main className="mx-auto grid max-w-3xl gap-6 px-4 py-8">
-        <Link href="/materials" className="text-sm text-forest underline-offset-4 hover:underline">
+        <Link href="/materials" className="inline-flex min-h-11 items-center justify-self-start text-sm text-forest underline-offset-4 hover:underline lg:min-h-0">
           ← Kembali ke daftar material
         </Link>
 

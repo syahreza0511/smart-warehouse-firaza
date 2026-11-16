@@ -148,4 +148,46 @@
       padding: 2.5rem;
     }
   }
+
+  /* App shell (components/app-shell.jsx): the fixed 272 px sidebar shows from
+     1024 px; the page content moves right while it is present. */
+  @media (min-width: 64rem) {
+    body:has([data-app-shell]) {
+      padding-left: 17rem;
+    }
+  }
+
+  /* The default focus outline is Forest, which disappears on the Forest
+     sidebar and drawer. */
+  .app-sidebar :focus-visible {
+    outline-color: var(--sage);
+  }
+
+  /* Touch targets below 1024 px (Owner decision D5): main controls are at
+     least 44 px high (and icon buttons 44 px wide); links inside tables get
+     a 44 px hit area. Sizes from 1024 px are unchanged. */
+  @media (max-width: 63.999rem) {
+    [data-slot="button"],
+    [data-slot="input"],
+    main select {
+      min-height: 2.75rem;
+    }
+
+    [data-slot="button"][data-size^="icon"] {
+      min-width: 2.75rem;
+    }
+
+    main table a[href] {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2.75rem;
+    }
+  }
+}
+
+/* Outside the layers on purpose: buttons carry the outline-none utility and
+   a Forest focus ring, which is invisible on the Forest sidebar and drawer. */
+.app-sidebar [data-slot="button"]:focus-visible {
+  outline: 3px solid var(--sage);
+  outline-offset: 2px;
 }

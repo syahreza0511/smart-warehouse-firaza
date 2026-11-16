@@ -28,7 +28,7 @@ function Notice({ notice }) {
       }
     >
       {notice.message}
-      {unknown && " Data terbaru sudah dimuat ulang; periksa status sesi sebelum mencoba lagi."}
+      {unknown && " Data terbaru sudah dimuat ulang; periksa status Sesi Pemeriksaan sebelum mencoba lagi."}
     </p>
   );
 }
@@ -81,11 +81,14 @@ function PostOpname({ opname, postingBlock, getPostingBlock, onChanged, onAuthEr
 
   return (
     <div className="grid gap-3">
-      <h3 className="text-base font-semibold">Posting hasil Stock Opname</h3>
+      <h3 className="text-base font-semibold">Finalisasi Pemeriksaan</h3>
       <p className="text-sm text-muted-foreground">
-        Posting menerapkan seluruh selisih sekaligus: material dengan selisih tidak nol mendapat transaksi
+        Finalisasi menerapkan seluruh selisih sekaligus: material dengan selisih tidak nol mendapat transaksi
         Penyesuaian, stoknya menjadi hasil hitung, dan pembekuan dilepas. Material dengan selisih nol tidak
-        mendapat transaksi. Posting tidak dapat dibatalkan.
+        mendapat transaksi.{" "}
+        <strong className="font-semibold text-foreground">
+          Penyesuaian stok bersifat permanen dan tidak dapat dibatalkan melalui aplikasi.
+        </strong>
       </p>
       {blocked && <p className="text-sm text-amber-900">{postingBlock}</p>}
       {!blocked && !ready && (
@@ -93,20 +96,23 @@ function PostOpname({ opname, postingBlock, getPostingBlock, onChanged, onAuthEr
           {summary.uncountedCount > 0
             ? `Masih ada ${summary.uncountedCount} material yang belum dihitung (berdasarkan data tersimpan).`
             : summary.mismatchCount > 0
-              ? "Ada material yang stoknya berbeda dari snapshot; sesi ini tidak dapat diposting."
-              : "Sesi belum siap diposting."}
+              ? "Ada material yang stoknya berbeda dari snapshot; Sesi Pemeriksaan ini tidak dapat difinalisasi."
+              : "Sesi Pemeriksaan belum siap difinalisasi."}
         </p>
       )}
       {confirming ? (
         <div role="alertdialog" aria-labelledby="post-confirm-text" className="grid gap-3 rounded-lg bg-sage/40 p-3">
           <p id="post-confirm-text" className="text-sm">
-            Posting {summary.itemCount} material berdasarkan hasil hitung yang tersimpan di server:{" "}
-            {summary.increaseCount} bertambah, {summary.decreaseCount} berkurang, {summary.unchangedCount} tanpa selisih.
+            Finalisasi {summary.itemCount} material berdasarkan hasil hitung yang tersimpan di server:{" "}
+            {summary.increaseCount} bertambah, {summary.decreaseCount} berkurang, {summary.unchangedCount} tanpa selisih.{" "}
+            <strong className="font-semibold">
+              Stok resmi akan disesuaikan secara permanen dan tidak dapat dibatalkan melalui aplikasi.
+            </strong>{" "}
             Lanjutkan?
           </p>
           <div className="flex flex-wrap gap-3">
             <Button type="button" disabled={submitting || blocked} onClick={confirmPost}>
-              {submitting ? "Memposting…" : "Ya, posting sekarang"}
+              {submitting ? "Memfinalisasi…" : "Ya, finalisasi sekarang"}
             </Button>
             <Button type="button" variant="outline" disabled={submitting} onClick={() => setConfirming(false)}>
               Batal
@@ -124,7 +130,7 @@ function PostOpname({ opname, postingBlock, getPostingBlock, onChanged, onAuthEr
             setConfirming(true);
           }}
         >
-          Posting sesi
+          Finalisasi Pemeriksaan
         </Button>
       )}
     </div>
@@ -171,11 +177,12 @@ function CancelOpname({ opname, onChanged, onAuthError, onNotice }) {
 
   return (
     <div className="grid gap-3">
-      <h3 className="text-base font-semibold">Batalkan sesi</h3>
+      <h3 className="text-base font-semibold">Batalkan Sesi Pemeriksaan</h3>
       <p className="text-sm text-muted-foreground">
-        Pembatalan tidak mengubah stok dan melepas pembekuan semua material di sesi ini. Sesi yang dibatalkan tidak
-        dapat diaktifkan kembali.
-        {!opname.createdByMe && " Sesi ini dibuat oleh pengguna lain; Anda tetap dapat membatalkannya dengan alasan."}
+        Pembatalan tidak mengubah stok dan melepas pembekuan semua material di Sesi Pemeriksaan ini. Sesi Pemeriksaan
+        yang dibatalkan tidak dapat dilanjutkan kembali.
+        {!opname.createdByMe &&
+          " Sesi Pemeriksaan ini dimulai oleh pengguna lain; Anda tetap dapat membatalkannya dengan alasan."}
       </p>
       {open ? (
         <form
@@ -186,7 +193,7 @@ function CancelOpname({ opname, onChanged, onAuthError, onNotice }) {
           className="grid gap-3 rounded-lg bg-destructive/5 p-3"
         >
           <p id="cancel-title" className="text-sm font-medium text-destructive">
-            Batalkan sesi Stock Opname ini?
+            Batalkan Sesi Pemeriksaan ini?
           </p>
           <div className="grid gap-2">
             <Label htmlFor="cancel-reason">Alasan pembatalan</Label>
@@ -209,7 +216,7 @@ function CancelOpname({ opname, onChanged, onAuthError, onNotice }) {
           </div>
           <div className="flex flex-wrap gap-3">
             <Button type="submit" variant="destructive" disabled={submitting}>
-              {submitting ? "Membatalkan…" : "Ya, batalkan sesi"}
+              {submitting ? "Membatalkan…" : "Ya, batalkan Sesi Pemeriksaan"}
             </Button>
             <Button type="button" variant="outline" disabled={submitting} onClick={() => setOpen(false)}>
               Tutup
@@ -226,7 +233,7 @@ function CancelOpname({ opname, onChanged, onAuthError, onNotice }) {
             setOpen(true);
           }}
         >
-          Batalkan sesi
+          Batalkan Sesi Pemeriksaan
         </Button>
       )}
     </div>
@@ -254,7 +261,7 @@ export function OpnameActions({ opname, postingBlock, getPostingBlock, onChanged
       )}
       {opname.status === "ACTIVE" && !canPost && canCancel && (
         <p className="text-sm text-muted-foreground">
-          Hanya pembuat sesi yang dapat mengisi hasil hitung dan memposting sesi ini.
+          Hanya pengguna yang memulai Sesi Pemeriksaan ini yang dapat mengisi hasil hitung dan memfinalisasinya.
         </p>
       )}
       {canCancel && <CancelOpname opname={opname} onChanged={onChanged} onAuthError={onAuthError} onNotice={setNotice} />}

@@ -37,24 +37,24 @@ function PendingCreatePanel({ attempt, failure, isStaff, submitting, onResend, o
 
   return (
     <div role="alert" className="grid gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-      <p className="font-medium">Ada pembuatan sesi Stock Opname ({count} material) yang statusnya belum pasti.</p>
+      <p className="font-medium">Ada permintaan memulai Sesi Pemeriksaan ({count} material) yang statusnya belum pasti.</p>
       {failure?.message && <p>{failure.message}</p>}
       {attempt.lastConflict ? (
         <p>
           Kiriman ulang terakhir ditolak ({attempt.lastConflict}). Itu hanya membuktikan kiriman ulang tersebut tidak
-          membuat sesi. Permintaan pertama yang terputus belum tentu tidak akan diproses belakangan. Periksa daftar sesi
-          aktif sebelum memutuskan.
+          membuat Sesi Pemeriksaan. Permintaan pertama yang terputus belum tentu tidak akan diproses belakangan. Periksa
+          daftar Sesi Pemeriksaan yang berlangsung sebelum memutuskan.
         </p>
       ) : (
         <p>
-          Sesi mungkin sudah dibuat, mungkin belum. Kirim ulang memakai kode permintaan dan pilihan material yang sama,
-          sehingga sesi tidak akan dibuat dua kali.
+          Sesi Pemeriksaan mungkin sudah dibuat, mungkin belum. Kirim ulang memakai kode permintaan dan pilihan material
+          yang sama, sehingga Sesi Pemeriksaan tidak akan dibuat dua kali.
         </p>
       )}
       {!isStaff && (
         <p>
-          Akun Anda saat ini tidak dapat membuat sesi, sehingga kiriman ulang akan ditolak. Periksa daftar sesi, atau minta
-          Staff Warehouse memeriksanya.
+          Akun Anda saat ini tidak dapat memulai Sesi Pemeriksaan, sehingga kiriman ulang akan ditolak. Periksa daftar
+          Sesi Pemeriksaan, atau minta Staff Warehouse memeriksanya.
         </p>
       )}
       <div className="flex flex-wrap gap-3">
@@ -64,14 +64,15 @@ function PendingCreatePanel({ attempt, failure, isStaff, submitting, onResend, o
           </Button>
         )}
         <Button asChild size="sm" variant="outline">
-          <Link href="/stock-opnames">Lihat daftar sesi Stock Opname</Link>
+          <Link href="/stock-opnames">Lihat daftar Pemeriksaan Stok</Link>
         </Button>
       </div>
       {confirming ? (
         <div className="grid gap-2 rounded-md bg-white/60 p-3">
           <p>
-            Akhiri pelacakan hanya jika Anda sudah memeriksa daftar sesi. Ini tidak menjamin permintaan pertama tidak akan
-            diproses: bila sesi baru dari Anda muncul belakangan dan tidak diinginkan, batalkan sesi itu dengan alasan.
+            Akhiri pelacakan hanya jika Anda sudah memeriksa daftar Sesi Pemeriksaan. Ini tidak menjamin permintaan
+            pertama tidak akan diproses: bila Sesi Pemeriksaan baru dari Anda muncul belakangan dan tidak diinginkan,
+            batalkan sesi itu dengan alasan.
           </p>
           <div className="flex flex-wrap gap-3">
             <Button type="button" size="sm" variant="destructive" disabled={submitting} onClick={onAbandon}>
@@ -85,11 +86,11 @@ function PendingCreatePanel({ attempt, failure, isStaff, submitting, onResend, o
       ) : (
         <button
           type="button"
-          className="justify-self-start text-sm underline underline-offset-2"
+          className="inline-flex min-h-11 items-center justify-self-start text-sm underline underline-offset-2 lg:min-h-0"
           disabled={submitting}
           onClick={() => setConfirming(true)}
         >
-          Saya sudah memeriksa daftar sesi — akhiri pelacakan
+          Saya sudah memeriksa daftar Sesi Pemeriksaan — akhiri pelacakan
         </button>
       )}
     </div>
@@ -217,7 +218,7 @@ export default function NewStockOpnamePage() {
       return;
     }
     if (selected.size > MAX_OPNAME_MATERIALS) {
-      setFailure({ message: `Maksimal ${MAX_OPNAME_MATERIALS} material per sesi.` });
+      setFailure({ message: `Maksimal ${MAX_OPNAME_MATERIALS} material per Sesi Pemeriksaan.` });
       setStatus("error");
       return;
     }
@@ -264,8 +265,11 @@ export default function NewStockOpnamePage() {
     <>
       <AppHeader user={session.user} />
       <main className="mx-auto grid max-w-3xl gap-6 px-4 py-8">
-        <Link href="/stock-opnames" className="text-sm text-forest underline-offset-4 hover:underline">
-          ← Kembali ke daftar Stock Opname
+        <Link
+          href="/stock-opnames"
+          className="inline-flex min-h-11 items-center justify-self-start text-sm text-forest underline-offset-4 hover:underline lg:min-h-0"
+        >
+          ← Kembali ke daftar Pemeriksaan Stok
         </Link>
 
         {session.status === "error" && <ErrorState message={session.error.message} onRetry={session.reload} />}
@@ -284,7 +288,7 @@ export default function NewStockOpnamePage() {
 
         {session.status === "ready" && !isStaff && (
           <p className="rounded-lg border bg-card p-6 text-muted-foreground">
-            Anda masuk sebagai Owner. Owner dapat memantau Stock Opname, tetapi tidak dapat membuat sesi.
+            Anda masuk sebagai Owner. Owner dapat memantau Pemeriksaan Stok, tetapi tidak dapat memulai Sesi Pemeriksaan.
           </p>
         )}
 
@@ -292,11 +296,12 @@ export default function NewStockOpnamePage() {
           <Card>
             <CardHeader>
               <CardTitle>
-                <h1 className="m-0 text-2xl">Mulai sesi Stock Opname</h1>
+                <h1 className="m-0 text-2xl">Mulai Pemeriksaan Stok</h1>
               </CardTitle>
               <p className="text-sm text-muted-foreground">
                 Pilih material yang akan dihitung. Material terpilih langsung dibekukan: Stock In, Stock Out, dan arsip
-                ditolak sampai sesi diposting atau dibatalkan. Daftar material tidak dapat diubah setelah sesi dibuat.
+                ditolak sampai Sesi Pemeriksaan difinalisasi atau dibatalkan. Daftar material tidak dapat diubah setelah
+                Sesi Pemeriksaan dimulai.
               </p>
             </CardHeader>
             <CardContent>
@@ -310,8 +315,8 @@ export default function NewStockOpnamePage() {
                 <form onSubmit={handleSubmit} noValidate className="grid gap-4" aria-describedby="opname-create-status">
                   {available.length === 0 ? (
                     <p className="rounded-lg border p-4 text-sm text-muted-foreground">
-                      Tidak ada material aktif yang dapat dipilih. Material arsip dan material yang sedang berada di sesi
-                      aktif lain tidak dapat dipilih.
+                      Tidak ada material aktif yang dapat dipilih. Material arsip dan material yang sedang berada di Sesi
+                      Pemeriksaan lain yang berlangsung tidak dapat dipilih.
                     </p>
                   ) : (
                     <fieldset className="grid gap-2" disabled={locked}>
@@ -355,7 +360,7 @@ export default function NewStockOpnamePage() {
 
                   {frozen.length > 0 && (
                     <p className="text-sm text-muted-foreground">
-                      {frozen.length} material tidak ditampilkan karena sedang berada di sesi Stock Opname aktif.
+                      {frozen.length} material tidak ditampilkan karena sedang berada di Sesi Pemeriksaan yang berlangsung.
                     </p>
                   )}
 
@@ -369,10 +374,10 @@ export default function NewStockOpnamePage() {
 
                   {!locked && available.length > 0 && (
                     <Button type="submit" size="lg" className="justify-self-start">
-                      Buat sesi dan bekukan material
+                      Mulai Pemeriksaan dan Bekukan Material
                     </Button>
                   )}
-                  {status === "submitting" && !showPending && <LoadingState label="Membuat sesi…" />}
+                  {status === "submitting" && !showPending && <LoadingState label="Memulai Sesi Pemeriksaan…" />}
                 </form>
               )}
             </CardContent>

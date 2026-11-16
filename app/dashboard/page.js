@@ -66,11 +66,18 @@ export default function DashboardPage() {
             <h1 className="text-2xl md:text-3xl">Dashboard</h1>
             <p className="text-muted-foreground">Kondisi inventori material aktif saat ini.</p>
           </div>
-          {state.status === "ready" && (
-            <Button type="button" variant="outline" size="sm" onClick={load}>
-              Muat ulang
-            </Button>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {isStaff && (
+              <Button asChild>
+                <Link href="/stock-opnames/new">Mulai Pemeriksaan Stok</Link>
+              </Button>
+            )}
+            {state.status === "ready" && (
+              <Button type="button" variant="outline" onClick={load}>
+                Muat ulang
+              </Button>
+            )}
+          </div>
         </div>
 
         {session.status === "error" && <ErrorState message={session.error.message} onRetry={session.reload} />}
@@ -89,9 +96,9 @@ export default function DashboardPage() {
                   </h2>
                   <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                     {CARDS.map((card) => (
-                      <div key={card.key} className="rounded-xl border bg-card p-4">
-                        <dt className="text-sm text-muted-foreground">{card.label}</dt>
-                        <dd className={`mt-1 text-3xl font-semibold tabular-nums ${card.tone}`}>
+                      <div key={card.key} className="rounded-2xl border bg-card p-4 md:p-5">
+                        <dt className="text-sm font-medium text-muted-foreground">{card.label}</dt>
+                        <dd className={`mt-1 text-[26px] font-bold tabular-nums md:text-3xl ${card.tone}`}>
                           {formatNumber(summary[card.key])}
                         </dd>
                       </div>
@@ -129,7 +136,42 @@ export default function DashboardPage() {
                       </p>
                     ) : (
                       <>
-                        <div className="overflow-x-auto rounded-xl border bg-card">
+                        <ul className="grid gap-3 md:hidden" aria-label="Material dengan stok habis atau rendah">
+                          {attention.materials.map((material) => (
+                            <li key={material.id} className="grid gap-2 rounded-2xl border bg-card p-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <Link
+                                  href={`/materials/${material.id}`}
+                                  className="flex min-h-11 items-center font-semibold text-forest underline underline-offset-4"
+                                >
+                                  {material.name}
+                                </Link>
+                                <span className="pt-2.5">
+                                  <StockStatusBadge status={material.stockStatus} />
+                                </span>
+                              </div>
+                              <dl className="grid grid-cols-3 gap-2 text-sm">
+                                <div>
+                                  <dt className="text-muted-foreground">Stok</dt>
+                                  <dd className="font-semibold tabular-nums">
+                                    {formatNumber(material.currentStock)} {material.unit}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt className="text-muted-foreground">Minimum</dt>
+                                  <dd className="tabular-nums">
+                                    {formatNumber(material.minimumStock)} {material.unit}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt className="text-muted-foreground">Kategori</dt>
+                                  <dd className="break-words">{material.categoryName}</dd>
+                                </div>
+                              </dl>
+                            </li>
+                          ))}
+                        </ul>
+                        <div className="hidden overflow-x-auto rounded-xl border bg-card md:block">
                           <table className="w-full text-sm">
                             <caption className="sr-only">Material dengan stok habis atau rendah</caption>
                             <thead className="bg-muted text-left">
@@ -186,7 +228,7 @@ export default function DashboardPage() {
                     Daftar material memuat setiap material aktif beserta kategori, satuan, stok saat ini, stok minimum, dan
                     status operasionalnya. Material arsip tersedia di tab Arsip.
                   </p>
-                  <Button asChild variant="outline" size="sm" className="justify-self-start">
+                  <Button asChild variant="outline" className="justify-self-start">
                     <Link href="/materials">Buka daftar material</Link>
                   </Button>
                 </section>

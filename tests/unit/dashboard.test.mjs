@@ -153,7 +153,10 @@ test("dashboard page: data only from the API, exact card labels, archived note, 
 
 test("navigation: Dashboard link added; leave guard and logout draft cleanup intact; /dashboard allowed after login", () => {
   const header = readFileSync(new URL("../../components/app-header.jsx", import.meta.url), "utf8");
-  assert.match(header, /<Link href="\/dashboard"[^>]*>\s+Dashboard\s+<\/Link>/);
+  // The navigation moved to the app shell (P0-DEADLINE-02A); AppHeader renders it.
+  const shell = readFileSync(new URL("../../components/app-shell.jsx", import.meta.url), "utf8");
+  assert.match(shell, /\{ href: "\/dashboard", label: "Dashboard", icon: "home" \}/);
+  assert.match(header, /<AppShell user=\{user\} logoutControl=\{logoutControl\} error=\{error\} \/>/);
   assert.match(header, /onClick=\{logout\} disabled=\{pending\} data-leave-page/);
   assert.equal((header.match(/clearTabCountDrafts\(\);/g) ?? []).length, 2);
   assert.equal(safeNextPath("/dashboard"), "/dashboard");
@@ -164,5 +167,7 @@ test("home page: accurate features, no obsolete or deployment claims", () => {
   const home = readFileSync(new URL("../../app/page.js", import.meta.url), "utf8");
   assert.doesNotMatch(home, /masih dalam pengembangan|Tahap pengembangan|pencatatan Stock In\./);
   assert.doesNotMatch(home, /production|produksi|sudah di-deploy|live/i);
-  for (const text of ["Dashboard", "Stock Opname", "Stock In dan Stock Out", "Owner memantau", '/login?next=%2Fdashboard']) assert.ok(home.includes(text), text);
+  // UI term "Pemeriksaan Stok" replaces "Stock Opname" (Owner decision D2).
+  for (const text of ["Dashboard", "Pemeriksaan Stok", "Stock In dan Stock Out", "Owner memantau", '/login?next=%2Fdashboard']) assert.ok(home.includes(text), text);
+  assert.doesNotMatch(home, /Stock Opname/);
 });
