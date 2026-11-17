@@ -24,6 +24,20 @@ Ada dua peran: **Staff Warehouse** mencatat dan mengelola data, sedangkan **Owne
 
 Deployment privat Owner terpisah dari demo ini dan tidak dibuka untuk reviewer. Demo tidak memakai database deployment tersebut.
 
+## Tangkapan layar demo
+
+Gambar berikut berasal dari smoke test reviewer pada **17 November 2026**, menggunakan data sintetis. Dashboard menunjukkan kondisi awal run, sebelum material `[QA-REVIEWER]` ditambahkan. Angka pada demo dapat berubah saat reviewer menggunakannya.
+
+### Dashboard Owner
+
+![Dashboard Owner dengan enam material aktif dan daftar stok yang perlu perhatian](docs/images/reviewer-dashboard-owner.png)
+
+### Detail material dan histori
+
+![Detail Box Hampers pada akun Owner, stok 98 pcs dan histori transaksi](docs/images/reviewer-material-owner.png)
+
+Owner melihat stok dan histori tanpa kontrol untuk mengubah data. Pedoman penggunaan PDF untuk Owner dan Staff disertakan melalui submission capstone. Password akun demo diserahkan melalui informasi akses submission.
+
 ## Fitur
 
 | Fitur | Keterangan |
@@ -226,7 +240,8 @@ node --test 'tests/unit/*.test.mjs'
 
 - Unit test berjalan tanpa jaringan maupun database.
 - GitHub Actions menjalankan unit test lalu `next build` pada setiap pull request ke `main` dan setiap push ke `main`.
-- Hasil untuk commit `7f8d88c` (16 November 2026): **191 unit test lulus dan build Next.js berhasil** ([run CI](https://github.com/syahreza0511/smart-warehouse-firaza/actions/runs/43894794119)).
+- Hasil untuk source aplikasi `7f8d88c` (16 November 2026): **191 unit test lulus dan build Next.js berhasil** ([run CI](https://github.com/syahreza0511/smart-warehouse-firaza/actions/runs/43894794119)).
+- Pembaruan README melalui merge `412fc96` (17 November 2026) juga lulus **191 unit test dan build** ([run CI](https://github.com/syahreza0511/smart-warehouse-firaza/actions/runs/43997118534)). Ini pemeriksaan CI, bukan pengujian browser baru.
 
 ### QA browser di demo reviewer (17 November 2026)
 
@@ -263,6 +278,14 @@ Harness integrasi HTTP dan SQL ada di `tests/integration/`. Harness ini mengubah
 - **Alasan pembatalan:** spasi di awal dan akhir alasan dirapikan oleh API, tetapi tidak oleh fungsi database bila dipanggil langsung.
 - **Temuan keamanan terbuka:** beberapa temuan berprioritas rendah masih terbuka, misalnya belum ada pembatasan percobaan login di tingkat aplikasi.
 
+## Dokumentasi
+
+- [Indeks dokumentasi](docs/README.md) menunjukkan acuan aplikasi saat ini dan arsip perencanaan.
+- [Status implementasi per 17 November 2026](docs/STATUS-IMPLEMENTASI.md) merangkum cakupan, keputusan yang berubah, bukti pengujian dan batasnya.
+- [Panduan pengujian](tests/README.md) menjelaskan harness integrasi lokal.
+
+Dokumen perencanaan lama tetap tersedia dengan penanda arsip pada pembukanya. Istilah “kanonik”, status belum deploy, ID lama dan fitur yang direncanakan di dalam arsip perlu dibaca menurut periode catatannya. Status implementasi menjelaskan perubahan yang sudah terjadi, termasuk pembatalan fitur Catatan Owner.
+
 ## Struktur proyek
 
 ```
@@ -272,10 +295,10 @@ lib/                 Klien API, validasi Zod, dan modul server (Supabase, auth, 
 public/brand/        Aset logo Firaza
 supabase/            Konfigurasi Supabase lokal dan migration SQL
 tests/               Unit test dan harness uji integrasi
-docs/                Dokumen perencanaan dan desain
+docs/                Indeks, status implementasi, screenshot dan arsip perencanaan
 ```
 
-Folder `docs/` berisi dokumen dari tahap perencanaan dan desain. Sebagian isinya belum diperbarui, misalnya status deployment dan rencana fitur yang sudah dibatalkan. Untuk status terkini, acuannya README ini dan source code.
+Mulai dari [docs/README.md](docs/README.md) sebelum membaca arsip desain. Source aplikasi dan migration SQL tetap dapat diperiksa untuk memverifikasi implementasi yang dijelaskan.
 
 ## Keamanan
 

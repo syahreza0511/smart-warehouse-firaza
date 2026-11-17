@@ -1,5 +1,10 @@
 # GitHub Workflow Guide
 
+> **Penanda arsip per 17 November 2026:** dokumen ini menyimpan perencanaan dan catatan pengembangan terdahulu.
+> Untuk kondisi aplikasi, ID capstone **B26B15J014**, cakupan fitur dan bukti terbaru, baca [status implementasi](STATUS-IMPLEMENTASI.md) dan [README utama](../README.md).
+> Teks status, keputusan dan contoh konfigurasi di bawah dipertahankan sebagai riwayat. Kedudukannya dijelaskan pada [indeks dokumentasi](README.md#cara-membaca-arsip).
+
+
 # Smart Warehouse Firaza
 
 ## 1. Tujuan
