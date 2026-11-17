@@ -1,6 +1,6 @@
 # Status implementasi Smart Warehouse Firaza
 
-Snapshot **17 November 2026**, ID capstone **B26B15J014**. Dokumen ini menjelaskan aplikasi yang sudah diimplementasikan serta batas bukti yang tersedia pada checkpoint tersebut. Tanggal dan hasil di sini merupakan catatan checkpoint, bukan pemeriksaan otomatis kondisi demo saat halaman ini dibuka.
+Snapshot **17 November 2026**, ID capstone **DB15-I015**. Dokumen ini menjelaskan aplikasi yang sudah diimplementasikan serta batas bukti yang tersedia pada checkpoint tersebut. Tanggal dan hasil di sini merupakan catatan checkpoint, bukan pemeriksaan otomatis kondisi demo saat halaman ini dibuka.
 
 ## Source dan akses reviewer
 
@@ -49,7 +49,7 @@ Supabase menyediakan PostgreSQL dan autentikasi. RLS serta RPC database menegakk
 
 | Catatan lama yang mungkin ditemukan | Kedudukan pada checkpoint ini |
 | --- | --- |
-| ID grup `DB15-I015` | Metadata lama. ID submission adalah **B26B15J014** |
+| ID proyek pada dokumentasi sebelumnya | ID proyek dan submission yang benar adalah **DB15-I015**, sesuai koreksi Owner |
 | React Vite, Express, Prisma, atau varian TypeScript | Alternatif/perencanaan terdahulu. Implementasi memakai JavaScript, Next.js Route Handlers dan Supabase |
 | Aplikasi belum di-deploy, dashboard atau Stock Opname belum tersedia | Status historis. Demo, dashboard dan Pemeriksaan Stok sudah tersedia pada checkpoint yang dirujuk |
 | Catatan Owner atau `FR-NOTE` ditunda untuk MVP selanjutnya | **Dibatalkan oleh Owner.** Fitur ini bukan bagian aplikasi atau backlog aktif |
