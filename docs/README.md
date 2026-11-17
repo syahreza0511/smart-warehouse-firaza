@@ -1,6 +1,6 @@
 # Dokumentasi Smart Warehouse Firaza
 
-ID capstone **B26B15J014**. Peta dokumen ini membedakan penjelasan aplikasi yang tersedia saat ini dari arsip perencanaan dan riwayat pengembangan.
+ID capstone **DB15-I015**. Peta dokumen ini membedakan penjelasan aplikasi yang tersedia saat ini dari arsip perencanaan dan riwayat pengembangan.
 
 ## Mulai dari sini
 
@@ -20,7 +20,7 @@ Dokumen di bawah berasal dari tahap perencanaan dan pembaruan pengembangan sebel
 
 Istilah seperti *kanonik*, *keputusan final*, atau *belum di-deploy* di dalam arsip berlaku pada periode catatan tersebut. Sebagian rancangan belum diimplementasikan, sebagian sudah berubah, dan sebagian fitur dibatalkan. Arsip tidak menjadi bukti bahwa semua fitur yang disebut sudah tersedia. Untuk kondisi aplikasi per checkpoint terbaru, baca [status implementasi](STATUS-IMPLEMENTASI.md) dan periksa source code yang dirujuk.
 
-ID proyek yang digunakan untuk submission adalah **B26B15J014**. ID lain yang masih muncul pada arsip merupakan metadata lama. Nama **Stock Opname** tetap benar untuk route, API dan database, sedangkan antarmuka pengguna memakai **Pemeriksaan Stok**.
+ID proyek yang digunakan untuk submission adalah **DB15-I015**. Gunakan ID ini untuk informasi proyek dan submission. Nama **Stock Opname** tetap benar untuk route, API dan database, sedangkan antarmuka pengguna memakai **Pemeriksaan Stok**.
 
 ### Kebutuhan dan desain
 

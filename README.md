@@ -1,6 +1,6 @@
 # Smart Warehouse Firaza
 
-> **Status (17 November 2026):** Web MVP capstone Dicoding Bootcamp Batch 15, learning path Full-Stack Web Developer, tipe individu, ID proyek **B26B15J014**. Source aplikasi yang diuji dan di-deploy untuk demo reviewer adalah commit `7f8d88c` (termasuk UI Concept C). Demo berjalan di **https://firaza-reviewer.vercel.app** dengan database terpisah berisi data sintetis.
+> **Status (17 November 2026):** Web MVP capstone Dicoding Bootcamp Batch 15, learning path Full-Stack Web Developer, tipe individu, ID proyek **DB15-I015**. Source aplikasi yang diuji dan di-deploy untuk demo reviewer adalah commit `7f8d88c` (termasuk UI Concept C). Demo berjalan di **https://firaza-reviewer.vercel.app** dengan database terpisah berisi data sintetis.
 
 Smart Warehouse Firaza adalah aplikasi web untuk membantu usaha hampers dan personalized gift Firaza mengelola persediaan material pendukung fulfillment. Aplikasi ini mencakup:
 
