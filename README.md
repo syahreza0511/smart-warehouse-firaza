@@ -1,36 +1,82 @@
 # Smart Warehouse Firaza
 
-> **Status (11 November 2026):** Web MVP untuk capstone Dicoding (Full-Stack Web Developer, ID grup **DB15-I015**). Autentikasi dan peran, manajemen material, Stock In dan Stock Out, Stock Opname, dashboard, dan histori transaksi per material sudah diimplementasikan dan teruji di Supabase **lokal** yang terisolasi. Aplikasi **belum di-deploy**; migration 6 dan 7 belum diterapkan ke Supabase cloud, dan belum ada verifikasi produksi.
+> **Status (17 November 2026):** Web MVP capstone Dicoding Bootcamp Batch 15, learning path Full-Stack Web Developer, tipe individu, ID proyek **B26B15J014**. Source aplikasi yang diuji dan di-deploy untuk demo reviewer adalah commit `7f8d88c` (termasuk UI Concept C). Demo berjalan di **https://firaza-reviewer.vercel.app** dengan database terpisah berisi data sintetis.
 
-Smart Warehouse Firaza adalah aplikasi web untuk membantu bisnis hampers dan personalized gift Firaza mengelola persediaan bahan baku: memantau kondisi stok di dashboard, mengelola data material, mencatat barang masuk (Stock In) dan barang keluar (Stock Out), menjalankan Stock Opname, serta menelusuri histori transaksi. Akses dibagi untuk Owner dan Staff Warehouse.
+Smart Warehouse Firaza adalah aplikasi web untuk membantu usaha hampers dan personalized gift Firaza mengelola persediaan material pendukung fulfillment. Aplikasi ini mencakup:
 
-## Fitur yang sudah diimplementasikan
+- memantau kondisi stok;
+- mengelola data material;
+- mencatat Stock In dan Stock Out;
+- menjalankan Pemeriksaan Stok;
+- menelusuri histori transaksi.
+
+Ada dua peran: **Staff Warehouse** mencatat dan mengelola data, sedangkan **Owner** memantau tanpa dapat mengubah data.
+
+## Demo untuk reviewer
+
+| Hal | Keterangan |
+|---|---|
+| Alamat | https://firaza-reviewer.vercel.app |
+| Akun | Satu akun Owner dan satu akun Staff Warehouse. Email dan password diserahkan terpisah melalui proses submission, tidak dicantumkan di README maupun repositori. Tidak ada registrasi publik. |
+| Data | Data sintetis berlabel `[DEMO]` (data awal) dan `[QA-REVIEWER]` (data pengujian), bukan data bisnis. |
+| Perubahan | Perubahan yang dibuat reviewer tersimpan dan tidak di-reset otomatis. Angka stok, jumlah material, dan jumlah sesi dapat berbeda dari kondisi awal. |
+| Riwayat | Transaksi tidak dapat dihapus dari aplikasi. Koreksi stok dilakukan lewat Pemeriksaan Stok. |
+
+Deployment privat Owner terpisah dari demo ini dan tidak dibuka untuk reviewer. Demo tidak memakai database deployment tersebut.
+
+## Fitur
 
 | Fitur | Keterangan |
 |---|---|
-| Login dan logout | Melalui REST API aplikasi dengan Supabase Auth. Sesi disimpan di cookie `HttpOnly`. Tidak ada registrasi publik; akun disiapkan developer. |
-| Pembagian peran | `STAFF_WAREHOUSE` mengelola material, mencatat Stock In dan Stock Out, dan menjalankan Stock Opname. `OWNER` hanya membaca. Peran dibaca dari database dan ditegakkan di API serta di database. |
-| Dashboard | Empat ringkasan untuk material aktif (total, stok normal, stok rendah, stok habis), dihitung tepat oleh database, dan tabel material yang perlu perhatian (stok habis lalu stok rendah). Material arsip tidak dihitung. |
-| Daftar dan detail material | Nama, kategori, satuan, stok saat ini, stok minimum, dan status stok (Normal, Stok Rendah, Stok Habis); tab material aktif dan arsip. Daftar ini juga menjadi gambaran lengkap kondisi inventori. |
-| Manajemen material | Tambah dan ubah (nama, kategori, satuan, stok minimum), arsip dan aktifkan kembali dengan alasan, hapus permanen hanya untuk material tanpa riwayat. Satuan terkunci setelah ada transaksi atau item Stock Opname. Stok tidak dapat diubah dari form material. |
-| Kategori | Hanya dibaca di MVP; kategori disiapkan pengelola sistem (OD-19). |
-| Stock In dan Stock Out | Menambah atau mengurangi stok dengan jumlah bilangan bulat positif dan catatan opsional; Stock Out ditolak bila stok tidak mencukupi. Stok awal dicatat sebagai Stock In dengan catatan "Saldo awal" (OD-17). |
-| Stock Opname | Sesi dengan material yang dipilih saat sesi dibuat (OD-01); material terpilih dibekukan sampai sesi diposting atau dibatalkan. Hanya pembuat sesi yang mengisi hasil hitung dan memposting; Staff Warehouse lain dapat membatalkan dengan alasan (OD-02/16). Posting atomik: transaksi Penyesuaian hanya untuk selisih tidak nol. |
-| Histori | Histori transaksi terbaru dan riwayat arsip per material, dengan pelaku ditampilkan sebagai "Anda" atau "Pengguna lain" (OD-28). |
-| Anti transaksi ganda | Stock In, Stock Out, dan pembuatan sesi Stock Opname (OD-20) memakai `Idempotency-Key`: pengiriman ulang dengan key dan data yang sama tidak mencatat ulang. Posting dan pembatalan sesi ditolak bila sesi sudah tidak aktif. Tidak ada pengiriman ulang otomatis; bila hasil tidak pasti, antarmuka meminta pengguna memeriksa atau mengirim ulang dengan key yang sama. |
+| Login dan logout | Lewat REST API aplikasi dengan Supabase Auth. Sesi disimpan di cookie `HttpOnly`. Akun disiapkan pengelola. |
+| Pembagian peran | `STAFF_WAREHOUSE` mengelola material, mencatat Stock In dan Stock Out, dan menjalankan Pemeriksaan Stok. `OWNER` hanya membaca. Peran dibaca dari database dan ditegakkan di API serta di database. |
+| Dashboard | Empat ringkasan material aktif: total, stok normal, stok rendah, dan stok habis. Juga ada tabel material yang perlu perhatian (stok habis, lalu stok rendah). Material arsip tidak dihitung. |
+| Daftar dan detail material | Nama, kategori, satuan, stok saat ini, stok minimum, dan status stok (Normal, Stok Rendah, Stok Habis), dengan tab material aktif dan arsip. |
+| Manajemen material | Tambah dan ubah (nama, kategori, satuan, stok minimum); arsip dan aktifkan kembali dengan alasan; hapus permanen hanya untuk material tanpa riwayat. Satuan terkunci setelah ada transaksi atau item Pemeriksaan Stok. Stok tidak dapat diubah dari form material. |
+| Kategori | Hanya dibaca. Kategori disiapkan pengelola sistem. |
+| Stock In dan Stock Out | Jumlah berupa bilangan bulat positif dengan catatan opsional. Stock Out ditolak bila stok tidak mencukupi. Stok awal dicatat sebagai Stock In dengan catatan "Saldo awal". |
+| Pemeriksaan Stok | Lihat bagian [Pemeriksaan Stok](#pemeriksaan-stok). |
+| Histori | Transaksi terbaru dan riwayat arsip per material. Pelaku ditampilkan sebagai "Anda" atau "Pengguna lain". |
+| Anti transaksi ganda | Stock In, Stock Out, dan pembuatan sesi Pemeriksaan Stok memakai `Idempotency-Key`. Pengiriman ulang dengan key dan data yang sama tidak mencatat ulang. Finalisasi dan pembatalan ditolak bila sesi sudah tidak berlangsung. |
 
-Belum diimplementasikan (ditunda dari MVP): koreksi transaksi (`REVERSAL`), laporan transaksi dan ekspor, pencarian dan filter, histori transaksi global, Catatan Owner, manajemen kategori dari aplikasi, antarmuka manajemen akun, dan fitur AI. Rencana lengkapnya ada di [PRD](docs/PRD-Smart-Warehouse-Firaza-Dicoding.md).
+**Pemantauan inventori** tersedia melalui Dashboard dan daftar Material. Aplikasi tidak menyediakan ekspor atau laporan terpisah.
+
+**Belum tersedia:** koreksi transaksi (`REVERSAL`), ekspor dan laporan terpisah, pencarian dan filter, histori transaksi global, pengelolaan kategori dan akun dari aplikasi, serta fitur AI.
+
+### Pemeriksaan Stok
+
+Antarmuka memakai istilah **Pemeriksaan Stok** untuk proses yang di source code, route, API, dan database bernama Stock Opname (`stock_opname`).
+
+- Staff memilih material saat membuat sesi. Material terpilih dibekukan sampai sesi difinalisasi atau dibatalkan.
+- Hanya pembuat sesi yang dapat mengisi hasil hitung dan memfinalisasi. Staff Warehouse lain dapat membatalkan sesi dengan alasan.
+- Finalisasi bersifat atomik dan membuat transaksi Penyesuaian hanya untuk selisih yang tidak nol.
+- Draf hasil hitung yang belum disimpan dipulihkan di tab yang sama. Antarmuka meminta konfirmasi sebelum meninggalkan halaman dengan perubahan yang belum disimpan.
+
+| Antarmuka | Source / API / database |
+|---|---|
+| Pemeriksaan Stok, Sesi Pemeriksaan | Stock Opname: `/stock-opnames`, `/api/v1/stock-opnames`, tabel `stock_opname` |
+| Berlangsung | `ACTIVE` |
+| Difinalisasi / Finalisasi | `POSTED` / `POST /api/v1/stock-opnames/{id}/post`, RPC `post_stock_opname` |
+| Dibatalkan | `CANCELLED` / `POST /api/v1/stock-opnames/{id}/cancel`, RPC `cancel_stock_opname` |
+| Simpan hasil hitung | `PUT /api/v1/stock-opnames/{id}/counts`, RPC `record_stock_opname_counts` |
+
+## Antarmuka (UI Concept C)
+
+- **Desktop (lebar 1024 px ke atas):** sidebar dengan logo Firaza dan tiga menu (Dashboard, Material, Pemeriksaan Stok), ditambah nama dan peran pengguna serta tombol Keluar.
+- **Layar di bawah 1024 px:** bilah atas dengan drawer navigasi (Radix Dialog) yang memiliki tombol buka/tutup berlabel dan menutup otomatis setelah navigasi. Kontrol utama berukuran sentuh 44 px.
+- Dashboard memakai kartu ringkasan dan, di layar kecil, daftar berbentuk kartu.
 
 ## Teknologi
 
 | Lapisan | Teknologi |
 |---|---|
 | Framework | Next.js 16 (App Router, Route Handlers), React 19, JavaScript |
-| UI | Tailwind CSS v4, shadcn/ui (Radix UI) |
-| Validasi | Zod v4 (dipakai bersama di form dan API) |
+| UI | Tailwind CSS v4, shadcn/ui, Radix UI |
+| Validasi | Zod v4, dipakai bersama di form dan API |
 | HTTP client | Axios |
-| Database dan autentikasi | Supabase: PostgreSQL 17 dan Supabase Auth, melalui `@supabase/ssr` dan `@supabase/supabase-js` |
-| Tooling | Supabase CLI (devDependency), GitHub Actions (unit test dan build pada setiap pull request ke `main`) |
+| Database dan autentikasi | Supabase: PostgreSQL dan Supabase Auth, melalui `@supabase/ssr` dan `@supabase/supabase-js` |
+| Tooling | Supabase CLI (devDependency), GitHub Actions (unit test dan build) |
+| Hosting demo | Vercel |
 
 ## Arsitektur singkat
 
@@ -41,9 +87,9 @@ Browser (Client Component)
                      └─ PostgreSQL: RLS + RPC (stock movement, material, Stock Opname: otorisasi, saldo, idempotency)
 ```
 
-- Browser tidak pernah memanggil Supabase langsung, dan kunci Supabase tidak dikirim ke browser.
+- Browser tidak memanggil Supabase langsung, dan kunci Supabase tidak dikirim ke browser.
 - Saldo stok, penolakan stok tidak cukup, otorisasi peran, dan idempotency ditegakkan di PostgreSQL. Histori transaksi bersifat append-only.
-- Role API tidak memiliki hak `INSERT`, `UPDATE`, atau `DELETE` langsung pada tabel bisnis; semua perubahan stok lewat RPC.
+- Role API tidak memiliki hak `INSERT`, `UPDATE`, atau `DELETE` langsung pada tabel bisnis. Semua perubahan lewat RPC.
 
 ### REST API
 
@@ -71,11 +117,13 @@ Browser (Client Component)
 | `POST` | `/api/v1/stock-opnames/{id}/post` | Body `{}`. Hanya pembuat sesi |
 | `POST` | `/api/v1/stock-opnames/{id}/cancel` | Body `{ reason }`. Staff Warehouse mana pun |
 
-Respons error berbentuk `{ "error": { "code", "message", "fields"? } }`. Semua permintaan yang mengubah data hanya menerima body JSON (`Content-Type: application/json`) dari origin yang sama; `DELETE` dan logout juga hanya menerima permintaan dari origin yang sama.
+**Format error dan origin.** Respons error berbentuk `{ "error": { "code", "message", "fields"? } }`. Permintaan yang mengubah data hanya menerima body JSON (`Content-Type: application/json`) dari origin yang sama. `DELETE` dan logout juga hanya menerima permintaan dari origin yang sama.
 
-Pengiriman ulang pembuatan sesi Stock Opname dengan key dan daftar material yang sama mengembalikan respons pembuatan pertama (termasuk status `ACTIVE` saat itu), walaupun sesi sudah diposting atau dibatalkan; status terkini selalu dibaca dari `GET /api/v1/stock-opnames/{id}`.
+**Replay pembuatan sesi.** Bila sesi dibuat ulang dengan key dan daftar material yang sama, API mengembalikan respons pembuatan pertama, termasuk status `ACTIVE` saat itu, walaupun sesi sudah difinalisasi atau dibatalkan. Status terkini selalu dibaca dari `GET /api/v1/stock-opnames/{id}`.
 
 ## Menjalankan secara lokal
+
+Bagian ini untuk developer. Semua langkah memakai Supabase **lokal** dan data sintetis.
 
 ### Prasyarat
 
@@ -97,7 +145,9 @@ npm ci
 npx supabase start
 ```
 
-Perintah ini menjalankan Supabase di Docker dan menerapkan ketujuh migration di `supabase/migrations/`. Setelah selesai, `npx supabase status -o env` menampilkan URL API lokal (`API_URL`) dan kunci-kuncinya, antara lain `PUBLISHABLE_KEY` dan `SERVICE_ROLE_KEY`. Jangan bagikan atau commit output tersebut.
+Perintah ini menjalankan Supabase di Docker dan menerapkan ketujuh migration di `supabase/migrations/`.
+
+Setelah selesai, `npx supabase status -o env` menampilkan URL API lokal (`API_URL`) dan kunci-kuncinya, antara lain `PUBLISHABLE_KEY` dan `SERVICE_ROLE_KEY`. Jangan bagikan atau commit output tersebut.
 
 ### 3. Atur environment variable
 
@@ -117,11 +167,13 @@ Isi `.env.local`:
 - `.env.local` diabaikan Git. Jangan commit file environment yang berisi nilai asli.
 - Di deployment HTTPS, biarkan `AUTH_COOKIE_SECURE` tidak di-set (atau `true`). Cookie autentikasi selalu memakai atribut `Secure` kecuali nilainya persis `false`.
 
-### 4. Siapkan akun dan data demo
+### 4. Siapkan akun dan data demo lokal
 
-Registrasi publik dinonaktifkan dan aplikasi belum memiliki antarmuka admin, jadi akun dan kategori disiapkan developer di Supabase **lokal**. Material dapat dibuat Staff Warehouse melalui aplikasi. Gunakan data sintetis, bukan data pribadi.
+Registrasi publik dinonaktifkan dan aplikasi belum memiliki antarmuka admin. Karena itu akun dan kategori disiapkan developer di Supabase **lokal**, sedangkan material dibuat Staff Warehouse melalui aplikasi. Gunakan data sintetis, bukan data pribadi.
 
-1. Buat pengguna Auth melalui Auth Admin API lokal. Isi variabel shell `SERVICE_ROLE_KEY` dengan nilai `SERVICE_ROLE_KEY` dari `npx supabase status -o env`; kunci ini hanya untuk perintah admin di terminal Anda, bukan untuk aplikasi.
+1. Buat pengguna Auth melalui Auth Admin API lokal.
+
+   Isi variabel shell `SERVICE_ROLE_KEY` dengan nilai `SERVICE_ROLE_KEY` dari `npx supabase status -o env`. Kunci ini hanya untuk perintah admin di terminal Anda, bukan untuk aplikasi.
 
    ```bash
    curl -X POST http://127.0.0.1:54321/auth/v1/admin/users \
@@ -130,7 +182,7 @@ Registrasi publik dinonaktifkan dan aplikasi belum memiliki antarmuka admin, jad
      -d '{"email":"staff@example.test","password":"<password-anda>","email_confirm":true}'
    ```
 
-   Catat `id` pengguna dari respons. Ulangi untuk akun Owner.
+   Catat `id` pengguna dari respons, lalu ulangi untuk akun Owner.
 
 2. Buat profil dan peran melalui function admin, dari sesi SQL sebagai `postgres`:
 
@@ -146,15 +198,13 @@ Registrasi publik dinonaktifkan dan aplikasi belum memiliki antarmuka admin, jad
 
    Untuk Owner, gunakan peran `'OWNER'`.
 
-3. Buat kategori demo di sesi SQL yang sama (kategori hanya dibaca oleh aplikasi, OD-19):
+3. Buat kategori demo di sesi SQL yang sama (kategori hanya dibaca oleh aplikasi):
 
    ```sql
    insert into public.categories (name) values ('[DEMO] Kemasan');
    ```
 
-   Material kemudian dibuat melalui halaman "Tambah material" (stok awal 0), dan stok awal dicatat sebagai Stock In dengan catatan "Saldo awal", sehingga saldo selalu sesuai dengan histori transaksi.
-
-Rincian prosedur admin ada di [DATABASE-DESIGN §12.5](docs/DATABASE-DESIGN-Smart-Warehouse-Firaza.md).
+   Setelah itu, buat material melalui halaman "Tambah material" (stok awal 0). Catat stok awal sebagai Stock In dengan catatan "Saldo awal" agar saldo selalu sesuai dengan histori transaksi.
 
 ### 5. Jalankan aplikasi
 
@@ -162,63 +212,77 @@ Rincian prosedur admin ada di [DATABASE-DESIGN §12.5](docs/DATABASE-DESIGN-Smar
 npm run dev
 ```
 
-Buka `http://localhost:3000`, lalu masuk dengan akun yang sudah dibuat. Untuk production build: `npm run build` lalu `npm run start`.
+Buka `http://localhost:3000`, lalu masuk dengan akun yang sudah dibuat. Untuk production build, jalankan `npm run build` lalu `npm run start`.
 
 ## Pengujian
+
+Hasil pengujian dibedakan menurut jenis dan lingkungannya.
+
+### Unit test dan build (CI)
 
 ```bash
 node --test 'tests/unit/*.test.mjs'
 ```
 
-Unit test berjalan tanpa jaringan maupun database dan dijalankan CI di GitHub Actions sebelum build. Uji integrasi HTTP dan SQL ada di `tests/integration/`; uji tersebut mengubah state lokal (sesi Auth, akun demo, dan pada sebagian harness data inventori sintetis), sehingga hanya dijalankan dengan sengaja terhadap stack Supabase uji yang terisolasi dan tidak dijalankan CI. Petunjuknya ada di [tests/README.md](tests/README.md).
+- Unit test berjalan tanpa jaringan maupun database.
+- GitHub Actions menjalankan unit test lalu `next build` pada setiap pull request ke `main` dan setiap push ke `main`.
+- Hasil untuk commit `7f8d88c` (16 November 2026): **191 unit test lulus dan build Next.js berhasil** ([run CI](https://github.com/syahreza0511/smart-warehouse-firaza/actions/runs/43894794119)).
 
-Hasil verifikasi (semuanya **lokal**, data sintetis):
+### QA browser di demo reviewer (17 November 2026)
 
-- 4 November 2026, Stock In dan Stock Out (stack uji sekali pakai): kelima migration awal dari database kosong; unit test 30/30, uji API 46/46, harness HTTP 63/63, uji browser otomatis (Chrome) 34/34, probe hak akses database 14/14, uji batas SQL lulus; atribut cookie diverifikasi.
-- 10–11 November 2026, stack Supabase lokal terisolasi (port loopback saja): migration 6 dan 7 diterapkan satu per satu dengan verifikasi skema dan hak akses; harness HTTP Material CRUD 144/144 dan Stock Opname 303/303 (termasuk uji konkurensi nyata); QA browser Chrome untuk tiga peran dan ukuran layar 390, 768, dan 1280 piksel; smoke test dashboard 36/36 dengan angka yang sama dengan database.
-- Unit test saat ini: 163/163.
+**17 dari 17 skenario lulus**, dijalankan terhadap https://firaza-reviewer.vercel.app dari commit `7f8d88c` dengan data sintetis.
 
-Rincian dan batasnya dicatat di [STACK-DECISION-LOG](docs/STACK-DECISION-LOG.md) (ADR-15, ADR-16, dan status 11 November 2026) dan [DATABASE-DESIGN §15](docs/DATABASE-DESIGN-Smart-Warehouse-Firaza.md).
+- **14 skenario UI** di Chrome headless, desktop 1280 px, dan emulasi mobile 390 px:
+  - Owner: login, dashboard sesuai database, daftar dan detail material serta histori, detail sesi yang difinalisasi dan dibatalkan tanpa kontrol ubah, dan logout.
+  - Staff: membuat dan mengubah nama material, Stock In 20, dan Stock Out 3 (stok 17).
+  - Staff: Pemeriksaan Stok dengan hasil hitung 15 diisi di 390 px, lalu finalisasi (stok 15, Penyesuaian −2).
+  - Staff: sesi kedua dibatalkan dengan alasan, lalu logout.
+- **3 pemeriksaan API** lewat `fetch` dari halaman aplikasi:
+  - replay Stock In dengan key dan payload yang sama tidak menambah stok atau ledger;
+  - finalisasi ulang ditolak `409 OPNAME_NOT_ACTIVE`;
+  - Owner yang mencoba Stock In ditolak `403 FORBIDDEN` tanpa perubahan stok.
+- **Verifikasi akhir (baca-saja di database demo):** stok sama dengan jumlah ledger, tidak ada sesi berlangsung atau material yang dibekukan, dan data seed tidak berubah.
+
+### Uji integrasi lokal
+
+Harness integrasi HTTP dan SQL ada di `tests/integration/`. Harness ini mengubah state (sesi Auth, akun demo, dan sebagian data inventori sintetis), sehingga hanya dijalankan dengan sengaja terhadap stack Supabase lokal yang terisolasi dan tidak dijalankan CI. Petunjuknya ada di [tests/README.md](tests/README.md).
+
+### Batas cakupan pengujian
+
+- QA browser hanya memakai Chrome headless. Tampilan mobile diuji dengan emulasi 390 px.
+- Safari, Firefox, dan perangkat mobile nyata belum diverifikasi.
+- Penonaktifan akun saat sesi aktif dan kedaluwarsa sesi belum diuji di demo.
+- Hasil di atas tidak berarti semua aspek keamanan sudah diuji atau lulus.
 
 ## Keterbatasan saat ini
 
-- Belum di-deploy; migration 6 dan 7 belum diterapkan ke Supabase cloud, dan belum ada verifikasi melalui HTTPS maupun di produksi.
-- Responsivitas diverifikasi di Chrome (390, 768, 1280 piksel); browser lain belum diuji.
-- Daftar material tidak memakai paginasi dan dibatasi `max_rows` PostgREST (1000 baris); dashboard tidak memakai daftar ini untuk total. Tabel perhatian di dashboard menampilkan maksimal 50 baris beserta totalnya, dan daftar sesi Stock Opname menampilkan 100 sesi terbaru.
-- Draf hasil hitung Stock Opname yang belum disimpan dipulihkan hanya di tab yang sama (sessionStorage, berlaku 8 jam) dan tetap harus disimpan atau dibuang; tidak ada sinkronisasi antar tab.
-- Kebijakan yang belum diputuskan: perubahan metadata material (nama, kategori, stok minimum) saat material sedang dibekukan Stock Opname saat ini diizinkan, dan perubahan metadata bersamaan oleh dua Staff memakai "perubahan terakhir menang".
-- Alasan pembatalan sesi Stock Opname dirapikan (spasi di awal dan akhir dibuang) oleh API, tetapi tidak oleh fungsi database bila dipanggil langsung (L-7).
-- Beberapa temuan keamanan berprioritas rendah masih terbuka, misalnya pembatasan percobaan login di tingkat aplikasi (STACK-DECISION-LOG ADR-15, F-02 sampai F-08).
-- Fitur yang ditunda tercantum di bagian "Fitur yang sudah diimplementasikan".
+- **Tampilan 390 px:** tabel hasil hitung Pemeriksaan Stok lebih lebar dari layar dan perlu digeser di dalam tabel. Halaman sendiri tidak bergeser horizontal.
+- **Batas daftar:** daftar material tidak memakai paginasi dan dibatasi `max_rows` PostgREST (1000 baris). Tabel perhatian di dashboard menampilkan maksimal 50 baris beserta totalnya, dan daftar Pemeriksaan Stok menampilkan 100 sesi terbaru.
+- **Draf hasil hitung:** draf yang belum disimpan hanya dipulihkan di tab yang sama (sessionStorage, berlaku 8 jam) dan tetap harus disimpan atau dibuang. Tidak ada sinkronisasi antar tab.
+- **Kebijakan yang belum diputuskan:** perubahan nama, kategori, atau stok minimum material yang sedang dibekukan Pemeriksaan Stok saat ini diizinkan. Perubahan bersamaan oleh dua Staff memakai aturan "perubahan terakhir menang".
+- **Alasan pembatalan:** spasi di awal dan akhir alasan dirapikan oleh API, tetapi tidak oleh fungsi database bila dipanggil langsung.
+- **Temuan keamanan terbuka:** beberapa temuan berprioritas rendah masih terbuka, misalnya belum ada pembatasan percobaan login di tingkat aplikasi.
 
 ## Struktur proyek
 
 ```
 app/                 Halaman (/login, /dashboard, /materials, /stock-opnames) dan REST API (app/api/v1)
-components/          Komponen antarmuka: form material, Stock In dan Stock Out, Stock Opname
+components/          Komponen antarmuka: shell navigasi, form material, Stock In dan Stock Out, Pemeriksaan Stok
 lib/                 Klien API, validasi Zod, dan modul server (Supabase, auth, HTTP)
+public/brand/        Aset logo Firaza
 supabase/            Konfigurasi Supabase lokal dan migration SQL
 tests/               Unit test dan harness uji integrasi
-docs/                Dokumentasi produk, desain, dan keputusan teknis
+docs/                Dokumen perencanaan dan desain
 ```
 
-## Dokumentasi
-
-Dokumen acuan yang aktif:
-
-- [PRD](docs/PRD-Smart-Warehouse-Firaza-Dicoding.md): kebutuhan produk dan aturan bisnis.
-- [FEATURE-SPECIFICATION](docs/FEATURE-SPECIFICATION-Smart-Warehouse-Firaza.md): spesifikasi fitur.
-- [STACK-DECISION-LOG](docs/STACK-DECISION-LOG.md): keputusan teknologi, status implementasi, dan pemenuhan checklist tech stack capstone (bagian "Kepatuhan Checklist Tech Stack").
-- [DATABASE-DESIGN](docs/DATABASE-DESIGN-Smart-Warehouse-Firaza.md): desain database, keamanan, dan bukti uji.
-
-Dokumen lain di `docs/` adalah bahan perencanaan awal. Sebagian masih menggambarkan rancangan sebelum keputusan teknologi (misalnya Express, Prisma, atau JWT). Bila berbeda, yang berlaku adalah STACK-DECISION-LOG.
+Folder `docs/` berisi dokumen dari tahap perencanaan dan desain. Sebagian isinya belum diperbarui, misalnya status deployment dan rencana fitur yang sudah dibatalkan. Untuk status terkini, acuannya README ini dan source code.
 
 ## Keamanan
 
 - Jangan commit `.env.local`, token, password, API key, credential database, atau file rahasia lainnya. `.env.example` hanya berisi placeholder.
-- Service role key dan secret key Supabase tidak boleh dipakai oleh aplikasi; keduanya hanya untuk tugas admin developer.
-- Gunakan data sintetis untuk pengembangan dan pengujian.
+- Service role key dan secret key Supabase tidak boleh dipakai oleh aplikasi. Keduanya hanya untuk tugas admin developer.
+- Gunakan data sintetis untuk pengembangan, pengujian, dan demo.
 
 ## Alur kerja Git
 
-Pengembangan dilakukan di feature branch, lalu digabungkan ke `main` melalui pull request setelah CI build lulus dan pemilik proyek menyetujuinya.
+Pengembangan dilakukan di feature branch, lalu digabungkan ke `main` melalui pull request setelah check CI "Build" lulus.
